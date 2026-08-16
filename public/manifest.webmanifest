@@ -1,0 +1,24 @@
+{
+  "name": "HuntPulse AI",
+  "short_name": "HuntPulse",
+  "description": "Поиск вакансий и подготовка персонализированных откликов с помощью ИИ",
+  "lang": "ru",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#09090b",
+  "theme_color": "#8b5cf6",
+  "icons": [
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ]
+}

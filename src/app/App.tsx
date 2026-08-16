@@ -148,6 +148,32 @@ function PulseDot({ active }: { active: boolean }) {
   );
 }
 
+function AppIcon({ className = "h-7 w-7" }: { className?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <span
+        className={`${className} flex items-center justify-center rounded-lg`}
+        style={{ background: "linear-gradient(135deg, #8B5CF6, #06b6d4)" }}
+        aria-hidden="true"
+      >
+        <Zap size={14} className="text-white" />
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src="/icon.png"
+      alt=""
+      className={`${className} rounded-lg object-cover`}
+      onError={() => setFailed(true)}
+      aria-hidden="true"
+    />
+  );
+}
+
 function CopyButton({ text }: { text: string }) {
   const [copied, setCopied] = useState(false);
   return (
@@ -1336,7 +1362,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #8B5CF6, #06b6d4)" }}><Zap size={14} className="text-white" /></div>
+              <AppIcon />
               {running && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-violet-400 animate-pulse" />}
             </div>
             <span className="font-bold tracking-tight" style={{ fontFamily: "Oxanium, monospace", fontSize: "1.1rem" }}>
