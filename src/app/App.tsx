@@ -1,130 +1,20 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type JSX } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  Zap, Settings, History, LayoutDashboard, Moon, Sun, Eye, EyeOff,
-  Play, Square, Copy, Check, ChevronDown, ChevronUp, Loader2,
-  TrendingUp, Target, AlertCircle, CheckCircle, XCircle,
-  SkipForward, RefreshCw, ExternalLink, Bot, User, Key, FileText,
-  BookOpen, ArrowRight, Shield, Send, X, Pencil, Building2,
-  Briefcase, MapPin, Clock, Download, Upload, HelpCircle, Sparkles,
-  Cpu, Globe, ChevronRight, Plus, Inbox, BrainCircuit, Hand,
-  RotateCcw, ThumbsUp, SkipForward as Skip, Rocket, Layers,
-  Bell, ChevronLeft
-} from "lucide-react";
+import { Zap, Settings, History, LayoutDashboard, Moon, Sun, Play, Square, TrendingUp, Target, CheckCircle, RefreshCw, ExternalLink, BookOpen, Briefcase, Plus, Inbox, BrainCircuit, Hand, Bell, Sparkles, Cpu, Globe, ChevronRight, Key, User } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import type { AppRecord, AppStatus, Config, ExecMode, PendingVacancy, Position, Tab, Theme } from "./domain/types";
+import { AREA_OPTIONS, createDemoQueue, MOCK_APPLICATIONS, PROVIDERS } from "./data/catalog";
+import { validateImportedConfig } from "./lib/config";
+import { AppCard, Field, PulseDot } from "./shared/components";
+import { AddPositionModal, ExecutionModeModal, ManualReviewPanel, OnboardingScreen } from "./features/positions/components";
+import { SearchPanel } from "./features/search/SearchPanel";
+import { GuideTab } from "./features/guide/GuideTab";
+import { ConfigPanel } from "./features/settings/ConfigPanel";
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type Theme = "dark" | "light";
-type Tab = "dashboard" | "config" | "history" | "settings" | "guide";
-type AppStatus = "Отправлено" | "В процессе" | "Ошибка" | "Пропущено";
-type Provider = "gemini" | "groq" | "openrouter";
-type ExecMode = "auto" | "manual";
-
-interface Position {
-  id: string;
-  hhToken: string;
-  resumeId: string;
-  jobTitle: string;
-  salaryFrom: string;
-  areaId: string;
-  areaName: string;
-  createdAt: string;
-}
-
-type JobSource = "hh" | "habr" | "djinni" | "remoteco" | "remoteok" | "telegram" | "arbeitnow";
-
-interface AppRecord {
-  id: string; vacancyId: string; title: string; company: string;
-  salary: string; date: string; status: AppStatus; letter: string; url: string;
-  source?: JobSource;
-}
-
-interface PendingVacancy {
-  id: string; title: string; company: string; salary: string;
-  location: string; experience: string; description: string;
-  skills: string[]; letter: string; url: string;
-}
-
-interface Config {
-  provider: Provider; apiKey: string; profile: string;
-  jobTitle: string; areaId: string; salaryFrom: string; salaryTo: string; dailyLimit: number;
-}
-
-// ─── Validation ───────────────────────────────────────────────────────────────
-function validateImportedConfig(raw: unknown): { valid: true; data: Config } | { valid: false; error: string } {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { valid: false, error: "Файл должен содержать JSON-объект" };
-  const r = raw as Record<string, unknown>;
-  const validProviders: Provider[] = ["gemini", "groq", "openrouter"];
-  if (r.provider && !validProviders.includes(r.provider as Provider)) return { valid: false, error: `Неизвестный провайдер: "${r.provider}"` };
-  return {
-    valid: true,
-    data: {
-      provider: (r.provider as Provider) || "gemini", apiKey: String(r.apiKey ?? ""),
-      profile: String(r.profile ?? ""), jobTitle: String(r.jobTitle ?? ""),
-      areaId: String(r.areaId ?? "1"), salaryFrom: String(r.salaryFrom ?? ""),
-      salaryTo: String(r.salaryTo ?? ""), dailyLimit: Number(r.dailyLimit ?? 15),
-    }
-  };
-}
-
-// ─── Job sources registry ─────────────────────────────────────────────────────
-const JOB_SOURCES: Record<JobSource, {
-  label: string; url: string; color: string; bg: string; border: string;
-  rss?: string; api?: string; free: boolean; geo: string; desc: string;
-}> = {
-  hh:        { label: "HH.ru",           url: "https://hh.ru",                color: "text-red-400",      bg: "bg-red-400/10",      border: "border-red-400/30",      free: true,  geo: "RU",     desc: "Крупнейший job-сайт РФ. Бесплатный публичный API.", rss: "https://hh.ru/search/vacancy/rss?text={q}&area={area}" },
-  habr:      { label: "Habr Career",     url: "https://career.habr.com",      color: "text-sky-400",      bg: "bg-sky-400/10",      border: "border-sky-400/30",      free: true,  geo: "RU",     desc: "IT-вакансии от Хабра. Публичный JSON API без авторизации.", api: "https://career.habr.com/api/frontend/vacancies?q={q}&sort=date" },
-  djinni:    { label: "Djinni.co",       url: "https://djinni.co",            color: "text-violet-400",   bg: "bg-violet-400/10",   border: "border-violet-400/30",   free: true,  geo: "RU/UA",  desc: "IT-платформа РФ/Украина. Бесплатный RSS-фид.", rss: "https://djinni.co/jobs/rss/?primary_keyword={q}" },
-  remoteco:  { label: "Remote.co",       url: "https://remote.co",            color: "text-emerald-400",  bg: "bg-emerald-400/10",  border: "border-emerald-400/30",  free: true,  geo: "World",  desc: "Удалёнка по всему миру. RSS-фид без регистрации.", rss: "https://remote.co/remote-jobs/feed/" },
-  remoteok:  { label: "RemoteOK",        url: "https://remoteok.io",          color: "text-amber-400",    bg: "bg-amber-400/10",    border: "border-amber-400/30",    free: true,  geo: "World",  desc: "Бесплатный JSON API. Только удалённые вакансии.", api: "https://remoteok.io/api?tag={q}" },
-  telegram:  { label: "Telegram RSS",    url: "https://t.me",                 color: "text-cyan-400",     bg: "bg-cyan-400/10",     border: "border-cyan-400/30",     free: true,  geo: "RU",     desc: "Публичные Telegram-каналы с вакансиями через RSS-прокси.", rss: "https://rsshub.app/telegram/channel/devjobs_ru" },
-  arbeitnow: { label: "Arbeitnow",       url: "https://www.arbeitnow.com",    color: "text-pink-400",     bg: "bg-pink-400/10",     border: "border-pink-400/30",     free: true,  geo: "EU/World", desc: "Бесплатный API без ключа. Международные вакансии.", api: "https://www.arbeitnow.com/api/job-board-api" },
-};
-
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK_APPLICATIONS: AppRecord[] = [
-  { id: "1", vacancyId: "v001", title: "Senior Frontend Developer", company: "Яндекс", salary: "300 000 – 400 000 ₽", date: "2025-07-21T09:14:00", status: "Отправлено", source: "hh",       letter: "Уважаемая команда Яндекса! Меня привлекает ваша вакансия Senior Frontend Developer. За 6 лет опыта я освоил React, TypeScript и архитектуру микрофронтендов. Ваш акцент на масштабируемости и производительности полностью совпадает с моим профессиональным вектором.", url: "https://hh.ru/vacancy/1" },
-  { id: "2", vacancyId: "v002", title: "React Developer", company: "Тинькофф", salary: "250 000 – 320 000 ₽", date: "2025-07-21T09:08:00", status: "Отправлено", source: "habr",     letter: "Добрый день! Тинькофф — один из самых технологичных банков страны. Мой стек: React 18, Next.js, Zustand, GraphQL. Готов принести пользу уже с первого спринта.", url: "https://hh.ru/vacancy/2" },
-  { id: "3", vacancyId: "v003", title: "Frontend Engineer", company: "Авито", salary: "280 000 – 360 000 ₽", date: "2025-07-21T08:55:00", status: "В процессе", source: "hh",       letter: "Генерация письма...", url: "https://hh.ru/vacancy/3" },
-  { id: "4", vacancyId: "v004", title: "UI Developer", company: "VK", salary: "200 000 – 280 000 ₽", date: "2025-07-21T08:42:00", status: "Пропущено", source: "djinni",    letter: "Вакансия уже была в истории откликов.", url: "https://hh.ru/vacancy/4" },
-  { id: "5", vacancyId: "v005", title: "JavaScript Developer", company: "Ozon", salary: "не указана", date: "2025-07-21T08:30:00", status: "Ошибка", source: "hh",       letter: "API ответил ошибкой 403.", url: "https://hh.ru/vacancy/5" },
-  { id: "6", vacancyId: "v006", title: "Frontend Architect", company: "Sber", salary: "400 000 – 550 000 ₽", date: "2025-07-20T16:45:00", status: "Отправлено", source: "habr",     letter: "Здравствуйте! Архитектурная роль в Сбере — именно то, к чему я шёл три года. Имею опыт проектирования design system и монорепозиториев на Nx.", url: "https://hh.ru/vacancy/6" },
-  { id: "7", vacancyId: "v007", title: "React Native Developer", company: "Delivery Club", salary: "220 000 – 290 000 ₽", date: "2025-07-20T14:22:00", status: "Отправлено", source: "remoteok", letter: "Мобильная разработка на React Native — моя вторая специализация. Участвовал в запуске приложения с 2 млн MAU.", url: "https://hh.ru/vacancy/7" },
-];
-
-const MOCK_PENDING: PendingVacancy[] = [
-  {
-    id: "pv1", title: "Frontend Lead", company: "Avito Tech", salary: "350 000 – 450 000 ₽",
-    location: "Москва · Гибрид", experience: "5+ лет", url: "https://hh.ru/vacancy/100",
-    skills: ["React", "TypeScript", "Team Lead", "Architecture", "GraphQL"],
-    description: "Ищем опытного Frontend Lead для развития платформы объявлений. Отвечаете за архитектурные решения, менторинг команды из 6 разработчиков, взаимодействие с продуктом.",
-    letter: `Уважаемая команда Avito Tech!\n\nПозиция Frontend Lead — это именно тот следующий шаг, к которому я готовился последние два года в роли Senior. Имею опыт архитектурных решений для высоконагруженных платформ и менторинга junior-разработчиков.\n\nМой стек полностью соответствует вашим требованиям: React, TypeScript, GraphQL. Готов взять ответственность за команду и технические стандарты.`,
-  },
-  {
-    id: "pv2", title: "Senior React Developer", company: "Lamoda Tech", salary: "280 000 – 370 000 ₽",
-    location: "Москва · Удалённо", experience: "4+ лет", url: "https://hh.ru/vacancy/101",
-    skills: ["React", "Next.js", "Redux", "Node.js", "Docker"],
-    description: "Ищем Senior React Developer для развития e-commerce платформы Lamoda. Задачи: архитектура новых фич, оптимизация производительности, code review.",
-    letter: `Добрый день, команда Lamoda!\n\nE-commerce разработка — это мой основной профиль последних 3 лет. На текущем месте участвовал в редизайне checkout-флоу, который увеличил конверсию на 18%.\n\nС вашим стеком работаю ежедневно. Готов к техническому интервью в удобное время.`,
-  },
-  {
-    id: "pv3", title: "UI/UX Engineer", company: "Sber Technology", salary: "300 000 – 400 000 ₽",
-    location: "Москва · Офис", experience: "3+ лет", url: "https://hh.ru/vacancy/102",
-    skills: ["React", "Design Systems", "Figma", "Storybook", "CSS"],
-    description: "Разработчик, умеющий говорить на одном языке с дизайнерами. Будете развивать корпоративную design system, интегрировать Figma-компоненты в продукт.",
-    letter: `Здравствуйте!\n\nДизайн-системы — моя страсть. Два года разрабатывал и поддерживал component library на 120+ компонентов в Storybook. Умею выстраивать рабочий процесс между дизайн-командой и разработкой.\n\nГотов показать живые примеры работ на портфолио.`,
-  },
-];
-
-const AREA_OPTIONS = [
-  { id: "1", name: "Москва" }, { id: "2", name: "Санкт-Петербург" },
-  { id: "113", name: "Россия (вся)" }, { id: "0", name: "Удалённо / Весь мир" },
-];
-
-const PROVIDERS: Record<Provider, { label: string; badge: string; badgeColor: string; model: string; icon: JSX.Element; placeholder: string }> = {
-  gemini: { label: "Google Gemini", badge: "Бесплатно", badgeColor: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30", model: "gemini-1.5-flash", icon: <Sparkles size={14} />, placeholder: "AIza..." },
-  groq: { label: "Groq (Llama 3)", badge: "Бесплатно", badgeColor: "text-emerald-400 bg-emerald-400/10 border-emerald-400/30", model: "llama-3.1-8b-instant", icon: <Cpu size={14} />, placeholder: "gsk_..." },
-  openrouter: { label: "OpenRouter", badge: ":free модели", badgeColor: "text-violet-400 bg-violet-400/10 border-violet-400/30", model: "llama-3.1-8b:free", icon: <Globe size={14} />, placeholder: "sk-or-..." },
+// ─── Main App ─────────────────────────────────────────────────────────────────
+const DEFAULT_CONFIG: Config = {
+  provider: "gemini", apiKey: "", profile: "",
+  jobTitle: "", areaId: "1", salaryFrom: "", salaryTo: "", dailyLimit: 15,
 };
 
 // ─── Shared UI ────────────────────────────────────────────────────────────────
@@ -1011,241 +901,12 @@ function buildSearchUrl(source: JobSource, query: string, areaId: string, salary
   }
 }
 
-function generateResults(query: string, areaId: string, salaryFrom: string, activeSources: Set<JobSource>): SearchResult[] {
-  const area = AREA_OPTIONS.find(a => a.id === areaId)?.name || "Россия";
-  const sf = salaryFrom ? Number(salaryFrom) : 0;
-
-  const pool: Omit<SearchResult, "id">[] = [
-    { title: `Senior ${query}`, company: "Яндекс", salary: `${(sf || 300000).toLocaleString("ru")} – ${((sf || 300000) + 100000).toLocaleString("ru")} ₽`, location: area, experience: "4+ лет", publishedAt: "2 часа назад", source: "hh", url: "https://hh.ru/vacancy/110001", tags: ["React", "TypeScript", "GraphQL"] },
-    { title: `${query} (удалённо)`, company: "Тинькофф", salary: `${(sf || 250000).toLocaleString("ru")} – ${((sf || 250000) + 80000).toLocaleString("ru")} ₽`, location: "Удалённо", experience: "3+ лет", publishedAt: "5 часов назад", source: "habr", url: "https://career.habr.com/vacancies/1000110", tags: ["React", "Next.js", "Node.js"] },
-    { title: `Middle ${query}`, company: "Авито", salary: `${(sf || 220000).toLocaleString("ru")} – ${((sf || 220000) + 60000).toLocaleString("ru")} ₽`, location: area, experience: "2+ лет", publishedAt: "1 день назад", source: "hh", url: "https://hh.ru/vacancy/110002", tags: ["Vue.js", "TypeScript", "REST"] },
-    { title: `${query} / Frontend`, company: "Lamoda Tech", salary: `${(sf || 270000).toLocaleString("ru")} – ${((sf || 270000) + 90000).toLocaleString("ru")} ₽`, location: "Москва · Гибрид", experience: "3+ лет", publishedAt: "3 часа назад", source: "djinni", url: "https://djinni.co/jobs/1234/", tags: ["React", "Redux", "Docker"] },
-    { title: `${query} (Remote)`, company: "DataRobot", salary: "$4 000 – $6 000/мес", location: "Весь мир", experience: "4+ лет", publishedAt: "6 часов назад", source: "remoteok", url: "https://remoteok.io/jobs/200001", tags: ["React", "Python", "AWS"] },
-    { title: `Lead ${query}`, company: "Сбер", salary: `${((sf || 400000)).toLocaleString("ru")} – ${((sf || 400000) + 150000).toLocaleString("ru")} ₽`, location: area, experience: "5+ лет", publishedAt: "12 часов назад", source: "hh", url: "https://hh.ru/vacancy/110003", tags: ["React", "Архитектура", "Mentoring"] },
-    { title: `${query} Engineer`, company: "Qodana (JetBrains)", salary: `${(sf || 350000).toLocaleString("ru")} – ${((sf || 350000) + 100000).toLocaleString("ru")} ₽`, location: "Санкт-Петербург · Гибрид", experience: "3+ лет", publishedAt: "1 день назад", source: "habr", url: "https://career.habr.com/vacancies/1000111", tags: ["TypeScript", "Kotlin", "CI/CD"] },
-    { title: `Remote ${query}`, company: "Toptal", salary: "$5 000 – $8 000/мес", location: "Весь мир", experience: "5+ лет", publishedAt: "2 дня назад", source: "remoteco", url: "https://remote.co/job/toptal-001", tags: ["React", "Node.js", "GraphQL"] },
-    { title: `${query} (EU)`, company: "Wolt", salary: "€5 000 – €7 000/мес", location: "Германия / Удалённо", experience: "3+ лет", publishedAt: "4 часа назад", source: "arbeitnow", url: "https://www.arbeitnow.com/jobs/wolt-001", tags: ["React", "TypeScript", "Микросервисы"] },
-    { title: `Junior ${query}`, company: "VK", salary: `${(sf || 150000).toLocaleString("ru")} – ${((sf || 150000) + 50000).toLocaleString("ru")} ₽`, location: area, experience: "0–2 лет", publishedAt: "3 дня назад", source: "hh", url: "https://hh.ru/vacancy/110004", tags: ["React", "HTML/CSS", "Git"] },
-    { title: `${query} Team Lead`, company: "Ozon Tech", salary: `${(sf || 450000).toLocaleString("ru")} – ${((sf || 450000) + 150000).toLocaleString("ru")} ₽`, location: area, experience: "6+ лет", publishedAt: "5 часов назад", source: "habr", url: "https://career.habr.com/vacancies/1000112", tags: ["React", "Team Lead", "System Design"] },
-    { title: `${query} — Telegram-канал`, company: "Разные компании", salary: "разная", location: "RU/UA", experience: "любой", publishedAt: "обновляется", source: "telegram", url: "https://t.me/devjobs_ru", tags: ["Агрегатор", "IT", "Удалённо"] },
-  ];
-
-  return pool
-    .filter(r => activeSources.has(r.source))
-    .map((r, i) => ({ ...r, id: `sr-${i}` }));
+function persistConfig(config: Config) {
+  const { apiKey, ...nonSensitiveConfig } = config;
+  localStorage.setItem(CONFIG_STORAGE_KEY, JSON.stringify(nonSensitiveConfig));
+  if (apiKey) sessionStorage.setItem(API_KEY_SESSION_KEY, apiKey);
+  else sessionStorage.removeItem(API_KEY_SESSION_KEY);
 }
-
-function SearchPanel({ config }: { config: Config }) {
-  const [query, setQuery] = useState(config.jobTitle || "");
-  const [salaryFrom, setSalaryFrom] = useState(config.salaryFrom || "");
-  const [areaId, setAreaId] = useState(config.areaId || "1");
-  const [activeSources, setActiveSources] = useState<Set<JobSource>>(new Set(Object.keys(JOB_SOURCES) as JobSource[]));
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searched, setSearched] = useState(false);
-
-  const toggleSource = (s: JobSource) => setActiveSources(prev => {
-    const next = new Set(prev);
-    if (next.has(s)) { if (next.size > 1) next.delete(s); } else next.add(s);
-    return next;
-  });
-
-  const handleSearch = () => {
-    if (!query.trim()) return;
-    setLoading(true);
-    setSearched(false);
-    setTimeout(() => {
-      setResults(generateResults(query, areaId, salaryFrom, activeSources));
-      setLoading(false);
-      setSearched(true);
-    }, 900 + Math.random() * 600);
-  };
-
-  const relativeTime = (s: string) => s;
-
-  return (
-    <div className="space-y-5">
-      {/* Search form */}
-      <div className="rounded-xl border border-border bg-card p-5">
-        <h2 className="text-base font-bold mb-1 flex items-center gap-2" style={{ fontFamily: "Oxanium, monospace" }}>
-          <Target size={16} className="text-[var(--neon-violet)]" />
-          Поиск вакансий
-        </h2>
-        <p className="text-xs font-mono text-muted-foreground mb-4">Просмотр доступных вакансий по вашим параметрам с прямыми ссылками</p>
-
-        <div className="space-y-4">
-          {/* Query row */}
-          <div className="flex gap-2">
-            <div className="flex-1 relative">
-              <Briefcase size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
-              <input
-                value={query} onChange={e => setQuery(e.target.value)}
-                onKeyDown={e => e.key === "Enter" && handleSearch()}
-                placeholder="Frontend Developer, React, Python…"
-                className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-border bg-input-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--neon-violet)] transition-all text-foreground placeholder:text-muted-foreground"
-              />
-            </div>
-            <button onClick={handleSearch} disabled={loading || !query.trim()}
-              className="flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm text-white transition-all disabled:opacity-40 min-h-[44px] shrink-0"
-              style={{ background: "linear-gradient(135deg, #8B5CF6, #7c3aed)", boxShadow: loading ? "none" : "0 0 16px rgba(139,92,246,0.35)" }}>
-              {loading ? <Loader2 size={14} className="animate-spin" /> : <Target size={14} />}
-              {loading ? "Ищу…" : "Найти"}
-            </button>
-          </div>
-
-          {/* Filters row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1">
-              <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Регион</label>
-              <select value={areaId} onChange={e => setAreaId(e.target.value)}
-                className="w-full px-3 py-2 rounded-xl border border-border bg-input-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--neon-violet)] transition-all text-foreground">
-                {AREA_OPTIONS.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Зарплата от (₽)</label>
-              <input type="number" value={salaryFrom} onChange={e => setSalaryFrom(e.target.value)} placeholder="200000"
-                className="w-full px-3 py-2 rounded-xl border border-border bg-input-background text-sm font-mono focus:outline-none focus:ring-1 focus:ring-[var(--neon-violet)] transition-all text-foreground placeholder:text-muted-foreground" />
-            </div>
-          </div>
-
-          {/* Source toggles */}
-          <div className="space-y-1.5">
-            <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Источники</label>
-            <div className="flex gap-1.5 flex-wrap">
-              {(Object.entries(JOB_SOURCES) as [JobSource, typeof JOB_SOURCES[JobSource]][]).map(([id, s]) => (
-                <button key={id} onClick={() => toggleSource(id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-mono font-semibold border transition-all min-h-[32px] ${activeSources.has(id) ? `${s.color} ${s.bg} ${s.border}` : "text-muted-foreground border-border bg-transparent"}`}>
-                  {activeSources.has(id) && <Check size={10} />}{s.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Results */}
-      <AnimatePresence>
-        {loading && (
-          <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="flex flex-col items-center py-12 gap-3 text-muted-foreground">
-            <div className="relative">
-              <Loader2 size={28} className="animate-spin text-[var(--neon-violet)]" />
-            </div>
-            <div className="text-sm font-mono">Опрашиваю {activeSources.size} источников…</div>
-            <div className="flex gap-1.5">
-              {Array.from(activeSources).slice(0, 5).map(s => (
-                <span key={s} className={`text-[10px] font-mono px-1.5 py-0.5 rounded ${JOB_SOURCES[s].bg} ${JOB_SOURCES[s].color} border ${JOB_SOURCES[s].border}`}>{JOB_SOURCES[s].label}</span>
-              ))}
-            </div>
-          </motion.div>
-        )}
-
-        {searched && !loading && (
-          <motion.div key="results" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.2 }}>
-            <div className="flex items-center justify-between mb-3">
-              <div className="text-sm font-mono text-muted-foreground">
-                Найдено <span className="text-foreground font-semibold">{results.length}</span> вакансий
-                {" · "}запрос: <span className="text-[var(--neon-violet)]">{query}</span>
-              </div>
-              <div className="flex gap-1">
-                {Array.from(new Set(results.map(r => r.source))).map(s => (
-                  <span key={s} className={`text-[9px] font-mono px-1.5 py-0.5 rounded border ${JOB_SOURCES[s].color} ${JOB_SOURCES[s].bg} ${JOB_SOURCES[s].border}`}>{JOB_SOURCES[s].label}</span>
-                ))}
-              </div>
-            </div>
-
-            {results.length === 0 && (
-              <div className="py-12 text-center text-muted-foreground font-mono text-sm rounded-xl border border-border bg-card">
-                Ничего не найдено. Попробуйте изменить запрос или включить больше источников.
-              </div>
-            )}
-
-            <div className="space-y-2">
-              {results.map((r, i) => {
-                const src = JOB_SOURCES[r.source];
-                const searchUrl = buildSearchUrl(r.source, query, areaId, salaryFrom);
-                return (
-                  <motion.div key={r.id} initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.04 }}
-                    className="rounded-xl border border-border bg-card hover:border-[var(--neon-violet)]/30 transition-all p-4">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start gap-2 flex-wrap mb-1.5">
-                          <span className={`inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-mono font-semibold border shrink-0 ${src.color} ${src.bg} ${src.border}`}>
-                            {src.label}
-                          </span>
-                          <h3 className="text-sm font-semibold text-foreground leading-tight font-mono">{r.title}</h3>
-                        </div>
-                        <div className="flex items-center gap-2 text-xs font-mono text-muted-foreground flex-wrap mb-2">
-                          <span className="flex items-center gap-1"><Building2 size={11} />{r.company}</span>
-                          <span>·</span>
-                          <span className="flex items-center gap-1"><MapPin size={11} />{r.location}</span>
-                          <span>·</span>
-                          <span className="flex items-center gap-1"><Clock size={11} />{r.publishedAt}</span>
-                          {r.experience && <><span>·</span><span>{r.experience}</span></>}
-                        </div>
-                        <div className="text-sm font-mono text-emerald-400 font-semibold mb-2">{r.salary}</div>
-                        <div className="flex gap-1 flex-wrap">
-                          {r.tags.map(t => (
-                            <span key={t} className="text-[10px] font-mono px-2 py-0.5 rounded-md bg-muted text-muted-foreground border border-border">{t}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div className="flex flex-col gap-1.5 shrink-0">
-                        <a href={r.url} target="_blank" rel="noopener noreferrer"
-                          className="flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono font-semibold text-white transition-all min-h-[36px] whitespace-nowrap hover:opacity-90"
-                          style={{ background: "linear-gradient(135deg, #8B5CF6, #7c3aed)" }}>
-                          <ExternalLink size={11} />Открыть
-                        </a>
-                        <a href={searchUrl} target="_blank" rel="noopener noreferrer"
-                          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono border transition-all min-h-[36px] whitespace-nowrap hover:opacity-80 ${src.color} ${src.bg} ${src.border}`}>
-                          <Globe size={11} />Ещё на {src.label}
-                        </a>
-                      </div>
-                    </div>
-                  </motion.div>
-                );
-              })}
-            </div>
-
-            {results.length > 0 && (
-              <div className="mt-4 rounded-xl border border-border bg-muted/40 p-4">
-                <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-3">Прямые ссылки на поиск по запросу «{query}»</div>
-                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                  {(Object.entries(JOB_SOURCES) as [JobSource, typeof JOB_SOURCES[JobSource]][]).map(([id, s]) => (
-                    <a key={id} href={buildSearchUrl(id, query, areaId, salaryFrom)} target="_blank" rel="noopener noreferrer"
-                      className={`flex items-center gap-2 px-3 py-2 rounded-lg border text-xs font-mono transition-all hover:opacity-80 ${s.color} ${s.bg} ${s.border}`}>
-                      <Globe size={11} /><span className="truncate">{s.label}</span><ExternalLink size={9} className="ml-auto shrink-0 opacity-60" />
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-          </motion.div>
-        )}
-
-        {!loading && !searched && (
-          <motion.div key="empty" initial={{ opacity: 0 }} animate={{ opacity: 1 }}
-            className="flex flex-col items-center py-14 gap-3 text-center text-muted-foreground">
-            <div className="w-14 h-14 rounded-2xl flex items-center justify-center" style={{ background: "rgba(139,92,246,0.08)", border: "1px solid rgba(139,92,246,0.2)" }}>
-              <Target size={24} className="text-[var(--neon-violet)] opacity-60" />
-            </div>
-            <div className="space-y-1">
-              <div className="text-sm font-mono text-foreground/70">Введите запрос и нажмите «Найти»</div>
-              <div className="text-xs font-mono">Будут показаны вакансии из {Object.keys(JOB_SOURCES).length} источников с прямыми ссылками</div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    </div>
-  );
-}
-
-// ─── Main App ─────────────────────────────────────────────────────────────────
-const DEFAULT_CONFIG: Config = {
-  provider: "gemini", apiKey: "", profile: "",
-  jobTitle: "Frontend Developer", areaId: "1", salaryFrom: "200000", salaryTo: "400000", dailyLimit: 15,
-};
 
 export default function App() {
   const [theme, setTheme] = useState<Theme>("dark");
@@ -1258,7 +919,7 @@ export default function App() {
   const [showModeSelect, setShowModeSelect] = useState(false);
   const [execMode, setExecMode] = useState<ExecMode | null>(null);
   const [positions, setPositions] = useState<Position[]>(() => {
-    try { return JSON.parse(localStorage.getItem("huntpulse_positions") || "[]"); } catch { return []; }
+    try { return JSON.parse(sessionStorage.getItem(POSITIONS_SESSION_KEY) || "[]"); } catch { return []; }
   });
   const [manualQueue, setManualQueue] = useState<PendingVacancy[]>([]);
   const [foundCount, setFoundCount] = useState(47);
@@ -1266,13 +927,14 @@ export default function App() {
   const [guideSection, setGuideSection] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const [config, setConfig] = useState<Config>(() => {
-    try { const r = validateImportedConfig(JSON.parse(localStorage.getItem("huntpulse_config") || "{}")); return r.valid ? r.data : DEFAULT_CONFIG; } catch { return DEFAULT_CONFIG; }
-  });
+  const [config, setConfig] = useState<Config>(loadConfig);
 
   useEffect(() => { document.documentElement.classList.toggle("dark", theme === "dark"); }, [theme]);
+  useEffect(() => () => {
+    if (intervalRef.current) clearTimeout(intervalRef.current);
+  }, []);
 
-  const saveConfig = useCallback((c: Config) => { setConfig(c); localStorage.setItem("huntpulse_config", JSON.stringify(c)); }, []);
+  const saveConfig = useCallback((c: Config) => { setConfig(c); persistConfig(c); }, []);
   const updateConfig = (partial: Partial<Config>) => saveConfig({ ...config, ...partial });
 
   const todayApps = applications.filter(a => new Date(a.date).toDateString() === new Date().toDateString());
@@ -1286,7 +948,7 @@ export default function App() {
   const handleAddPosition = (p: Position) => {
     const next = [...positions, p];
     setPositions(next);
-    localStorage.setItem("huntpulse_positions", JSON.stringify(next));
+    sessionStorage.setItem(POSITIONS_SESSION_KEY, JSON.stringify(next));
   };
 
   const handleStartClick = () => setShowModeSelect(true);
@@ -1297,7 +959,7 @@ export default function App() {
     setRunning(true);
     setRunProgress(0);
     if (mode === "manual") {
-      setManualQueue([...MOCK_PENDING]);
+      setManualQueue(createDemoQueue(positions[0]?.jobTitle || config.jobTitle));
     } else {
       let p = 0;
       const sim = () => {
@@ -1549,7 +1211,7 @@ export default function App() {
                       <h2 className="text-sm font-bold font-mono">Параметры автопоиска</h2>
                     </div>
                     <div className="space-y-4">
-                      <Field label="Должность" value={config.jobTitle} onChange={v => updateConfig({ jobTitle: v })} placeholder="Frontend Developer" icon={<Target size={12} />} />
+                      <Field label="Профессия или должность" value={config.jobTitle} onChange={v => updateConfig({ jobTitle: v })} placeholder="QA-инженер, дизайнер, художник…" icon={<Target size={12} />} />
                       <Field label="Зарплата от (₽)" value={config.salaryFrom} onChange={v => updateConfig({ salaryFrom: v })} placeholder="200000" type="number" />
                       <Field label="Зарплата до (₽)" value={config.salaryTo} onChange={v => updateConfig({ salaryTo: v })} placeholder="400000" type="number" />
                       <div className="space-y-1.5">
@@ -1583,7 +1245,7 @@ export default function App() {
             <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
               <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
                 <div>
-                  <h2 className="text-lg font-bold" style={{ fontFamily: "Oxanium, monospace" }}>История откликов</h2>
+                  <h2 className="text-lg font-bold" style={{ fontFamily: "Oxanium, monospace" }}>История откликов <span className="text-xs text-amber-400">(демо)</span></h2>
                   <p className="text-xs font-mono text-muted-foreground mt-0.5">{applications.length} записей</p>
                 </div>
                 <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-colors min-h-[40px]">
@@ -1620,7 +1282,7 @@ export default function App() {
               <div className="max-w-2xl space-y-4">
                 <div>
                   <h2 className="text-lg font-bold" style={{ fontFamily: "Oxanium, monospace" }}>Настройки</h2>
-                  <p className="text-xs font-mono text-muted-foreground mt-0.5">Данные хранятся локально в браузере</p>
+                  <p className="text-xs font-mono text-muted-foreground mt-0.5">Обычные настройки хранятся локально; ключи — только до закрытия вкладки</p>
                 </div>
 
                 {/* AI Provider */}
@@ -1667,9 +1329,9 @@ export default function App() {
 
                 <ConfigPanel config={config} onImport={saveConfig} />
 
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <div className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-2">PWA</div>
-                  <p className="text-xs text-muted-foreground font-mono leading-relaxed">HuntPulse AI — Progressive Web App. Нажмите «Добавить на главный экран» в браузере для установки без App Store.</p>
+                <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
+                  <div className="text-xs font-mono uppercase tracking-wider text-amber-400 mb-2">Безопасность</div>
+                  <p className="text-xs text-muted-foreground font-mono leading-relaxed">Не передавайте экспортированный конфиг третьим лицам. API-ключ намеренно не включается в файл и не сохраняется между сессиями браузера.</p>
                 </div>
               </div>
             </motion.div>
