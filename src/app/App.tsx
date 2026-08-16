@@ -12,6 +12,8 @@ import {
   Bell, ChevronLeft
 } from "lucide-react";
 import { toast, Toaster } from "sonner";
+import { PROFILE_PRESETS } from "./data/profile-presets";
+import { getSourceErrorLabel, searchJobs, type SearchResult, type SearchableJobSource } from "./services/job-search";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 type Theme = "dark" | "light";
@@ -81,41 +83,7 @@ const JOB_SOURCES: Record<JobSource, {
   arbeitnow: { label: "Arbeitnow",       url: "https://www.arbeitnow.com",    color: "text-pink-400",     bg: "bg-pink-400/10",     border: "border-pink-400/30",     free: true,  geo: "EU/World", desc: "Бесплатный API без ключа. Международные вакансии.", api: "https://www.arbeitnow.com/api/job-board-api" },
 };
 
-// ─── Mock data ────────────────────────────────────────────────────────────────
-const MOCK_APPLICATIONS: AppRecord[] = [
-  { id: "1", vacancyId: "v001", title: "Senior Frontend Developer", company: "Яндекс", salary: "300 000 – 400 000 ₽", date: "2025-07-21T09:14:00", status: "Отправлено", source: "hh",       letter: "Уважаемая команда Яндекса! Меня привлекает ваша вакансия Senior Frontend Developer. За 6 лет опыта я освоил React, TypeScript и архитектуру микрофронтендов. Ваш акцент на масштабируемости и производительности полностью совпадает с моим профессиональным вектором.", url: "https://hh.ru/vacancy/1" },
-  { id: "2", vacancyId: "v002", title: "React Developer", company: "Тинькофф", salary: "250 000 – 320 000 ₽", date: "2025-07-21T09:08:00", status: "Отправлено", source: "habr",     letter: "Добрый день! Тинькофф — один из самых технологичных банков страны. Мой стек: React 18, Next.js, Zustand, GraphQL. Готов принести пользу уже с первого спринта.", url: "https://hh.ru/vacancy/2" },
-  { id: "3", vacancyId: "v003", title: "Frontend Engineer", company: "Авито", salary: "280 000 – 360 000 ₽", date: "2025-07-21T08:55:00", status: "В процессе", source: "hh",       letter: "Генерация письма...", url: "https://hh.ru/vacancy/3" },
-  { id: "4", vacancyId: "v004", title: "UI Developer", company: "VK", salary: "200 000 – 280 000 ₽", date: "2025-07-21T08:42:00", status: "Пропущено", source: "djinni",    letter: "Вакансия уже была в истории откликов.", url: "https://hh.ru/vacancy/4" },
-  { id: "5", vacancyId: "v005", title: "JavaScript Developer", company: "Ozon", salary: "не указана", date: "2025-07-21T08:30:00", status: "Ошибка", source: "hh",       letter: "API ответил ошибкой 403.", url: "https://hh.ru/vacancy/5" },
-  { id: "6", vacancyId: "v006", title: "Frontend Architect", company: "Sber", salary: "400 000 – 550 000 ₽", date: "2025-07-20T16:45:00", status: "Отправлено", source: "habr",     letter: "Здравствуйте! Архитектурная роль в Сбере — именно то, к чему я шёл три года. Имею опыт проектирования design system и монорепозиториев на Nx.", url: "https://hh.ru/vacancy/6" },
-  { id: "7", vacancyId: "v007", title: "React Native Developer", company: "Delivery Club", salary: "220 000 – 290 000 ₽", date: "2025-07-20T14:22:00", status: "Отправлено", source: "remoteok", letter: "Мобильная разработка на React Native — моя вторая специализация. Участвовал в запуске приложения с 2 млн MAU.", url: "https://hh.ru/vacancy/7" },
-];
-
-const MOCK_PENDING: PendingVacancy[] = [
-  {
-    id: "pv1", title: "Frontend Lead", company: "Avito Tech", salary: "350 000 – 450 000 ₽",
-    location: "Москва · Гибрид", experience: "5+ лет", url: "https://hh.ru/vacancy/100",
-    skills: ["React", "TypeScript", "Team Lead", "Architecture", "GraphQL"],
-    description: "Ищем опытного Frontend Lead для развития платформы объявлений. Отвечаете за архитектурные решения, менторинг команды из 6 разработчиков, взаимодействие с продуктом.",
-    letter: `Уважаемая команда Avito Tech!\n\nПозиция Frontend Lead — это именно тот следующий шаг, к которому я готовился последние два года в роли Senior. Имею опыт архитектурных решений для высоконагруженных платформ и менторинга junior-разработчиков.\n\nМой стек полностью соответствует вашим требованиям: React, TypeScript, GraphQL. Готов взять ответственность за команду и технические стандарты.`,
-  },
-  {
-    id: "pv2", title: "Senior React Developer", company: "Lamoda Tech", salary: "280 000 – 370 000 ₽",
-    location: "Москва · Удалённо", experience: "4+ лет", url: "https://hh.ru/vacancy/101",
-    skills: ["React", "Next.js", "Redux", "Node.js", "Docker"],
-    description: "Ищем Senior React Developer для развития e-commerce платформы Lamoda. Задачи: архитектура новых фич, оптимизация производительности, code review.",
-    letter: `Добрый день, команда Lamoda!\n\nE-commerce разработка — это мой основной профиль последних 3 лет. На текущем месте участвовал в редизайне checkout-флоу, который увеличил конверсию на 18%.\n\nС вашим стеком работаю ежедневно. Готов к техническому интервью в удобное время.`,
-  },
-  {
-    id: "pv3", title: "UI/UX Engineer", company: "Sber Technology", salary: "300 000 – 400 000 ₽",
-    location: "Москва · Офис", experience: "3+ лет", url: "https://hh.ru/vacancy/102",
-    skills: ["React", "Design Systems", "Figma", "Storybook", "CSS"],
-    description: "Разработчик, умеющий говорить на одном языке с дизайнерами. Будете развивать корпоративную design system, интегрировать Figma-компоненты в продукт.",
-    letter: `Здравствуйте!\n\nДизайн-системы — моя страсть. Два года разрабатывал и поддерживал component library на 120+ компонентов в Storybook. Умею выстраивать рабочий процесс между дизайн-командой и разработкой.\n\nГотов показать живые примеры работ на портфолио.`,
-  },
-];
-
+// ─── Search and provider options ──────────────────────────────────────────────
 const AREA_OPTIONS = [
   { id: "1", name: "Москва" }, { id: "2", name: "Санкт-Петербург" },
   { id: "113", name: "Россия (вся)" }, { id: "0", name: "Удалённо / Весь мир" },
@@ -145,6 +113,32 @@ function PulseDot({ active }: { active: boolean }) {
       {active && <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-violet-400 opacity-75" />}
       <span className={`relative inline-flex rounded-full h-2.5 w-2.5 ${active ? "bg-violet-400" : "bg-muted-foreground/40"}`} />
     </span>
+  );
+}
+
+function AppIcon({ className = "h-7 w-7" }: { className?: string }) {
+  const [failed, setFailed] = useState(false);
+
+  if (failed) {
+    return (
+      <span
+        className={`${className} flex items-center justify-center rounded-lg`}
+        style={{ background: "linear-gradient(135deg, #8B5CF6, #06b6d4)" }}
+        aria-hidden="true"
+      >
+        <Zap size={14} className="text-white" />
+      </span>
+    );
+  }
+
+  return (
+    <img
+      src="/icon.png"
+      alt=""
+      className={`${className} rounded-lg object-cover`}
+      onError={() => setFailed(true)}
+      aria-hidden="true"
+    />
   );
 }
 
@@ -966,11 +960,7 @@ function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: () => vo
 }
 
 // ─── Search Panel ─────────────────────────────────────────────────────────────
-interface SearchResult {
-  id: string; title: string; company: string; salary: string;
-  location: string; experience: string; publishedAt: string;
-  source: JobSource; url: string; tags: string[];
-}
+const SEARCHABLE_SOURCES: SearchableJobSource[] = ["hh", "remoteok", "arbeitnow"];
 
 function buildSearchUrl(source: JobSource, query: string, areaId: string, salaryFrom: string): string {
   const q = encodeURIComponent(query);
@@ -980,62 +970,48 @@ function buildSearchUrl(source: JobSource, query: string, areaId: string, salary
     case "djinni":   return `https://djinni.co/jobs/?primary_keyword=${q}`;
     case "remoteco": return `https://remote.co/remote-jobs/search/?search_keywords=${q}`;
     case "remoteok": return `https://remoteok.io/remote-${q.toLowerCase().replace(/\s+/g, "-")}-jobs`;
-    case "telegram": return `https://t.me/devjobs_ru`;
+    case "telegram": return "https://t.me/devjobs_ru";
     case "arbeitnow":return `https://www.arbeitnow.com/?search=${q}`;
   }
-}
-
-function generateResults(query: string, areaId: string, salaryFrom: string, activeSources: Set<JobSource>): SearchResult[] {
-  const area = AREA_OPTIONS.find(a => a.id === areaId)?.name || "Россия";
-  const sf = salaryFrom ? Number(salaryFrom) : 0;
-
-  const pool: Omit<SearchResult, "id">[] = [
-    { title: `Senior ${query}`, company: "Яндекс", salary: `${(sf || 300000).toLocaleString("ru")} – ${((sf || 300000) + 100000).toLocaleString("ru")} ₽`, location: area, experience: "4+ лет", publishedAt: "2 часа назад", source: "hh", url: "https://hh.ru/vacancy/110001", tags: ["React", "TypeScript", "GraphQL"] },
-    { title: `${query} (удалённо)`, company: "Тинькофф", salary: `${(sf || 250000).toLocaleString("ru")} – ${((sf || 250000) + 80000).toLocaleString("ru")} ₽`, location: "Удалённо", experience: "3+ лет", publishedAt: "5 часов назад", source: "habr", url: "https://career.habr.com/vacancies/1000110", tags: ["React", "Next.js", "Node.js"] },
-    { title: `Middle ${query}`, company: "Авито", salary: `${(sf || 220000).toLocaleString("ru")} – ${((sf || 220000) + 60000).toLocaleString("ru")} ₽`, location: area, experience: "2+ лет", publishedAt: "1 день назад", source: "hh", url: "https://hh.ru/vacancy/110002", tags: ["Vue.js", "TypeScript", "REST"] },
-    { title: `${query} / Frontend`, company: "Lamoda Tech", salary: `${(sf || 270000).toLocaleString("ru")} – ${((sf || 270000) + 90000).toLocaleString("ru")} ₽`, location: "Москва · Гибрид", experience: "3+ лет", publishedAt: "3 часа назад", source: "djinni", url: "https://djinni.co/jobs/1234/", tags: ["React", "Redux", "Docker"] },
-    { title: `${query} (Remote)`, company: "DataRobot", salary: "$4 000 – $6 000/мес", location: "Весь мир", experience: "4+ лет", publishedAt: "6 часов назад", source: "remoteok", url: "https://remoteok.io/jobs/200001", tags: ["React", "Python", "AWS"] },
-    { title: `Lead ${query}`, company: "Сбер", salary: `${((sf || 400000)).toLocaleString("ru")} – ${((sf || 400000) + 150000).toLocaleString("ru")} ₽`, location: area, experience: "5+ лет", publishedAt: "12 часов назад", source: "hh", url: "https://hh.ru/vacancy/110003", tags: ["React", "Архитектура", "Mentoring"] },
-    { title: `${query} Engineer`, company: "Qodana (JetBrains)", salary: `${(sf || 350000).toLocaleString("ru")} – ${((sf || 350000) + 100000).toLocaleString("ru")} ₽`, location: "Санкт-Петербург · Гибрид", experience: "3+ лет", publishedAt: "1 день назад", source: "habr", url: "https://career.habr.com/vacancies/1000111", tags: ["TypeScript", "Kotlin", "CI/CD"] },
-    { title: `Remote ${query}`, company: "Toptal", salary: "$5 000 – $8 000/мес", location: "Весь мир", experience: "5+ лет", publishedAt: "2 дня назад", source: "remoteco", url: "https://remote.co/job/toptal-001", tags: ["React", "Node.js", "GraphQL"] },
-    { title: `${query} (EU)`, company: "Wolt", salary: "€5 000 – €7 000/мес", location: "Германия / Удалённо", experience: "3+ лет", publishedAt: "4 часа назад", source: "arbeitnow", url: "https://www.arbeitnow.com/jobs/wolt-001", tags: ["React", "TypeScript", "Микросервисы"] },
-    { title: `Junior ${query}`, company: "VK", salary: `${(sf || 150000).toLocaleString("ru")} – ${((sf || 150000) + 50000).toLocaleString("ru")} ₽`, location: area, experience: "0–2 лет", publishedAt: "3 дня назад", source: "hh", url: "https://hh.ru/vacancy/110004", tags: ["React", "HTML/CSS", "Git"] },
-    { title: `${query} Team Lead`, company: "Ozon Tech", salary: `${(sf || 450000).toLocaleString("ru")} – ${((sf || 450000) + 150000).toLocaleString("ru")} ₽`, location: area, experience: "6+ лет", publishedAt: "5 часов назад", source: "habr", url: "https://career.habr.com/vacancies/1000112", tags: ["React", "Team Lead", "System Design"] },
-    { title: `${query} — Telegram-канал`, company: "Разные компании", salary: "разная", location: "RU/UA", experience: "любой", publishedAt: "обновляется", source: "telegram", url: "https://t.me/devjobs_ru", tags: ["Агрегатор", "IT", "Удалённо"] },
-  ];
-
-  return pool
-    .filter(r => activeSources.has(r.source))
-    .map((r, i) => ({ ...r, id: `sr-${i}` }));
 }
 
 function SearchPanel({ config }: { config: Config }) {
   const [query, setQuery] = useState(config.jobTitle || "");
   const [salaryFrom, setSalaryFrom] = useState(config.salaryFrom || "");
   const [areaId, setAreaId] = useState(config.areaId || "1");
-  const [activeSources, setActiveSources] = useState<Set<JobSource>>(new Set(Object.keys(JOB_SOURCES) as JobSource[]));
+  const [activeSources, setActiveSources] = useState<Set<SearchableJobSource>>(new Set(["hh", "remoteok", "arbeitnow"]));
   const [results, setResults] = useState<SearchResult[]>([]);
   const [loading, setLoading] = useState(false);
   const [searched, setSearched] = useState(false);
+  const [sourceErrors, setSourceErrors] = useState<Partial<Record<SearchableJobSource, string>>>({});
 
-  const toggleSource = (s: JobSource) => setActiveSources(prev => {
+  const toggleSource = (s: SearchableJobSource) => setActiveSources(prev => {
     const next = new Set(prev);
     if (next.has(s)) { if (next.size > 1) next.delete(s); } else next.add(s);
     return next;
   });
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
     if (!query.trim()) return;
     setLoading(true);
     setSearched(false);
-    setTimeout(() => {
-      setResults(generateResults(query, areaId, salaryFrom, activeSources));
-      setLoading(false);
+    setSourceErrors({});
+    try {
+      const response = await searchJobs({
+        query: query.trim(),
+        areaId,
+        salaryFrom,
+        sources: Array.from(activeSources),
+      });
+      setResults(response.results);
+      setSourceErrors(response.errors);
       setSearched(true);
-    }, 900 + Math.random() * 600);
+    } catch {
+      toast.error("Не удалось выполнить поиск", { description: "Проверьте подключение к интернету и повторите попытку." });
+    } finally {
+      setLoading(false);
+    }
   };
-
-  const relativeTime = (s: string) => s;
 
   return (
     <div className="space-y-5">
@@ -1087,13 +1063,17 @@ function SearchPanel({ config }: { config: Config }) {
           <div className="space-y-1.5">
             <label className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Источники</label>
             <div className="flex gap-1.5 flex-wrap">
-              {(Object.entries(JOB_SOURCES) as [JobSource, typeof JOB_SOURCES[JobSource]][]).map(([id, s]) => (
-                <button key={id} onClick={() => toggleSource(id)}
-                  className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-mono font-semibold border transition-all min-h-[32px] ${activeSources.has(id) ? `${s.color} ${s.bg} ${s.border}` : "text-muted-foreground border-border bg-transparent"}`}>
-                  {activeSources.has(id) && <Check size={10} />}{s.label}
-                </button>
-              ))}
+              {SEARCHABLE_SOURCES.map((id) => {
+                const source = JOB_SOURCES[id];
+                return (
+                  <button key={id} onClick={() => toggleSource(id)}
+                    className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-[11px] font-mono font-semibold border transition-all min-h-[32px] ${activeSources.has(id) ? `${source.color} ${source.bg} ${source.border}` : "text-muted-foreground border-border bg-transparent"}`}>
+                    {activeSources.has(id) && <Check size={10} />}{source.label}
+                  </button>
+                );
+              })}
             </div>
+            <p className="text-[10px] font-mono text-muted-foreground">Только источники с открытым API. Остальные площадки доступны ниже как прямые ссылки на реальный поиск.</p>
           </div>
         </div>
       </div>
@@ -1128,6 +1108,14 @@ function SearchPanel({ config }: { config: Config }) {
                 ))}
               </div>
             </div>
+
+            {Object.keys(sourceErrors).length > 0 && (
+              <div className="mb-3 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs font-mono text-amber-300">
+                {Object.entries(sourceErrors).map(([source, error]) => (
+                  <div key={source}>{getSourceErrorLabel(source as SearchableJobSource)}: {error}</div>
+                ))}
+              </div>
+            )}
 
             {results.length === 0 && (
               <div className="py-12 text-center text-muted-foreground font-mono text-sm rounded-xl border border-border bg-card">
@@ -1225,7 +1213,9 @@ export default function App() {
   const [theme, setTheme] = useState<Theme>("dark");
   const [tab, setTab] = useState<Tab>("dashboard");
   const [running, setRunning] = useState(false);
-  const [applications, setApplications] = useState<AppRecord[]>(MOCK_APPLICATIONS);
+  const [applications, setApplications] = useState<AppRecord[]>(() => {
+    try { return JSON.parse(localStorage.getItem("huntpulse_applications") || "[]"); } catch { return []; }
+  });
   const [filterStatus, setFilterStatus] = useState<AppStatus | "Все">("Все");
   const [runProgress, setRunProgress] = useState(0);
   const [showAddPosition, setShowAddPosition] = useState(false);
@@ -1235,8 +1225,8 @@ export default function App() {
     try { return JSON.parse(localStorage.getItem("huntpulse_positions") || "[]"); } catch { return []; }
   });
   const [manualQueue, setManualQueue] = useState<PendingVacancy[]>([]);
-  const [foundCount, setFoundCount] = useState(47);
-  const [invites, setInvites] = useState(3);
+  const [foundCount] = useState(0);
+  const [invites] = useState(0);
   const [guideSection, setGuideSection] = useState<string | null>(null);
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -1245,6 +1235,7 @@ export default function App() {
   });
 
   useEffect(() => { document.documentElement.classList.toggle("dark", theme === "dark"); }, [theme]);
+  useEffect(() => { localStorage.setItem("huntpulse_applications", JSON.stringify(applications)); }, [applications]);
 
   const saveConfig = useCallback((c: Config) => { setConfig(c); localStorage.setItem("huntpulse_config", JSON.stringify(c)); }, []);
   const updateConfig = (partial: Partial<Config>) => saveConfig({ ...config, ...partial });
@@ -1263,24 +1254,19 @@ export default function App() {
     localStorage.setItem("huntpulse_positions", JSON.stringify(next));
   };
 
-  const handleStartClick = () => setShowModeSelect(true);
+  const handleStartClick = () => {
+    setTab("config");
+    toast.info("Настройте запрос и запустите поиск", { description: "Результаты загружаются напрямую из открытых API." });
+  };
 
   const handleModeSelect = (mode: ExecMode) => {
     setExecMode(mode);
     setShowModeSelect(false);
     setRunning(true);
     setRunProgress(0);
-    if (mode === "manual") {
-      setManualQueue([...MOCK_PENDING]);
-    } else {
-      let p = 0;
-      const sim = () => {
-        p += Math.random() * 18 + 5;
-        setRunProgress(Math.min(p, 95));
-        if (p < 95) intervalRef.current = setTimeout(sim, Math.random() * 7000 + 5000);
-      };
-      intervalRef.current = setTimeout(sim, 2000);
-    }
+    setTab("config");
+    setRunning(false);
+    toast.info("Поиск открыт", { description: "Приложение использует только реальные ответы источников." });
   };
 
   const handleStop = () => {
@@ -1336,7 +1322,7 @@ export default function App() {
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
             <div className="relative">
-              <div className="w-7 h-7 rounded-lg flex items-center justify-center" style={{ background: "linear-gradient(135deg, #8B5CF6, #06b6d4)" }}><Zap size={14} className="text-white" /></div>
+              <AppIcon />
               {running && <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-violet-400 animate-pulse" />}
             </div>
             <span className="font-bold tracking-tight" style={{ fontFamily: "Oxanium, monospace", fontSize: "1.1rem" }}>
@@ -1421,7 +1407,7 @@ export default function App() {
                         <button onClick={running ? handleStop : handleStartClick}
                           className={`flex items-center gap-2 px-5 py-2.5 rounded-xl font-semibold text-sm transition-all min-h-[44px] ${running ? "bg-red-500/20 text-red-400 border border-red-500/40 hover:bg-red-500/30" : "text-white border border-[var(--neon-violet)]/50"}`}
                           style={!running ? { background: "linear-gradient(135deg, #8B5CF6, #7c3aed)", boxShadow: "0 0 20px rgba(139,92,246,0.4)" } : {}}>
-                          {running ? <><Square size={14} />Остановить</> : <><Play size={14} />Запустить</>}
+                          {running ? <><Square size={14} />Остановить</> : <><Target size={14} />Найти вакансии</>}
                         </button>
                       </div>
                     </div>
@@ -1628,6 +1614,32 @@ export default function App() {
                 {/* Profile */}
                 <div className="rounded-xl border border-border bg-card p-5 space-y-5">
                   <div className="text-xs font-mono uppercase tracking-wider text-muted-foreground border-b border-border pb-2">Профиль кандидата</div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <label className="text-xs font-mono uppercase tracking-wider text-muted-foreground">Готовый профиль</label>
+                      <span className="text-[10px] font-mono text-[var(--neon-violet)]">Приоритет: тестировщик</span>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      {PROFILE_PRESETS.map((preset, index) => (
+                        <button
+                          key={preset.id}
+                          type="button"
+                          onClick={() => {
+                            updateConfig({ jobTitle: preset.jobTitle, profile: preset.profile });
+                            toast.success(`Профиль «${preset.label}» применён`);
+                          }}
+                          className={`rounded-xl border p-3 text-left transition-all hover:border-[var(--neon-violet)]/50 ${index < 2 ? "border-[var(--neon-violet)]/30 bg-[var(--neon-violet)]/5" : "border-border bg-input-background"}`}
+                        >
+                          <span className="mb-1 flex items-center gap-2 text-sm font-semibold text-foreground">
+                            {preset.label}
+                            {index < 2 && <span className="rounded-full bg-[var(--neon-violet)]/15 px-1.5 py-0.5 text-[9px] font-mono text-[var(--neon-violet)]">приоритет</span>}
+                          </span>
+                          <span className="block text-[11px] font-mono leading-relaxed text-muted-foreground">{preset.description}</span>
+                        </button>
+                      ))}
+                    </div>
+                    <p className="text-[10px] font-mono text-muted-foreground">Пресет заменяет должность и описание профиля. Текст можно отредактировать перед поиском.</p>
+                  </div>
                   <Field label="Описание профиля *" value={config.profile} onChange={v => updateConfig({ profile: v })}
                     placeholder="Расскажите о своём опыте, стеке, достижениях и пожеланиях. ИИ использует этот текст для генерации писем."
                     textarea icon={<User size={12} />} helpId="profile" onHelp={openHelp} />
