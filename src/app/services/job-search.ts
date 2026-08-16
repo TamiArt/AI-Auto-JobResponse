@@ -25,6 +25,44 @@ interface SearchParams {
   sources: SearchableJobSource[];
 }
 
+interface HhVacancy {
+  id: string;
+  name: string;
+  alternate_url: string;
+  published_at?: string;
+  employer?: { name?: string };
+  salary?: { from?: number; to?: number; currency?: string };
+  area?: { name?: string };
+  experience?: { name?: string };
+  schedule?: { name?: string };
+  key_skills?: Array<{ name: string }>;
+}
+
+interface RemoteOkVacancy {
+  id: string | number;
+  position?: string;
+  company?: string;
+  tags?: string[];
+  salary_min?: number;
+  salary_max?: number;
+  location?: string;
+  date?: string;
+  epoch?: number;
+  url?: string;
+}
+
+interface ArbeitnowVacancy {
+  slug: string;
+  title: string;
+  company_name?: string;
+  description?: string;
+  tags?: string[];
+  location?: string;
+  remote?: boolean;
+  created_at?: number;
+  url: string;
+}
+
 const SOURCE_LABELS: Record<SearchableJobSource, string> = {
   hh: "HH.ru",
   remoteok: "RemoteOK",
@@ -55,7 +93,7 @@ async function searchHh(params: SearchParams, signal: AbortSignal): Promise<Sear
     query.set("salary", params.salaryFrom);
     query.set("only_with_salary", "true");
   }
-  const payload = await fetchJson<{ items: any[] }>(`https://api.hh.ru/vacancies?${query}`, signal);
+  const payload = await fetchJson<{ items: HhVacancy[] }>(`https://api.hh.ru/vacancies?${query}`, signal);
   return payload.items.map((item) => ({
     id: `hh-${item.id}`,
     title: item.name,
@@ -73,7 +111,7 @@ async function searchHh(params: SearchParams, signal: AbortSignal): Promise<Sear
 }
 
 async function searchRemoteOk(params: SearchParams, signal: AbortSignal): Promise<SearchResult[]> {
-  const payload = await fetchJson<any[]>("https://remoteok.com/api", signal);
+  const payload = await fetchJson<RemoteOkVacancy[]>("https://remoteok.com/api", signal);
   const terms = params.query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
   return payload.slice(1).filter((item) => {
     const haystack = `${item.position} ${item.company} ${(item.tags || []).join(" ")}`.toLocaleLowerCase();
@@ -85,7 +123,7 @@ async function searchRemoteOk(params: SearchParams, signal: AbortSignal): Promis
     salary: item.salary_min || item.salary_max ? `$${item.salary_min || "?"}–${item.salary_max || "?"} в год` : "не указана",
     location: item.location || "Удалённо",
     experience: "",
-    publishedAt: formatDate(item.date || item.epoch * 1000),
+    publishedAt: formatDate(item.date || (item.epoch ? item.epoch * 1000 : undefined)),
     source: "remoteok" as const,
     url: item.url || `https://remoteok.com/remote-jobs/${item.id}`,
     tags: (item.tags || []).slice(0, 5),
@@ -93,7 +131,7 @@ async function searchRemoteOk(params: SearchParams, signal: AbortSignal): Promis
 }
 
 async function searchArbeitnow(params: SearchParams, signal: AbortSignal): Promise<SearchResult[]> {
-  const payload = await fetchJson<{ data: any[] }>("https://www.arbeitnow.com/api/job-board-api", signal);
+  const payload = await fetchJson<{ data: ArbeitnowVacancy[] }>("https://www.arbeitnow.com/api/job-board-api", signal);
   const terms = params.query.toLocaleLowerCase().split(/\s+/).filter(Boolean);
   return payload.data.filter((item) => {
     const haystack = `${item.title} ${item.company_name} ${stripHtml(item.description)} ${(item.tags || []).join(" ")}`.toLocaleLowerCase();
