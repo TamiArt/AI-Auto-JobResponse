@@ -6,6 +6,7 @@ export const DEFAULT_CONFIG: Config = {
   jobTitle: "",
   areaId: "1",
   salaryFrom: "",
+  telegramChannels: "",
 };
 
 function normalizeStoredConfig(value: unknown): Config {
@@ -15,6 +16,7 @@ function normalizeStoredConfig(value: unknown): Config {
     jobTitle: String(stored.jobTitle ?? ""),
     areaId: String(stored.areaId ?? "1"),
     salaryFrom: String(stored.salaryFrom ?? ""),
+    telegramChannels: String(stored.telegramChannels ?? ""),
   };
 }
 
