@@ -1,5 +1,6 @@
 import { withSecurityHeaders } from "../server/httpPolicy.mjs";
 import { normalizeTrudvsemPayload, validateTrudvsemRequest } from "../server/trudvsem.mjs";
+import { buildHhUrl, hhHeaders, validateHhRequest } from "../server/hh.mjs";
 import {
   filterPublicFeedResults,
   normalizeJobicyPayload,
@@ -21,8 +22,9 @@ const API_URLS = {
   jobicy: "https://jobicy.com/api/v2/remote-jobs?count=100",
 };
 
-export const SOURCE_NAMES = ["trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats"];
+export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats"];
 export const CACHE_SECONDS = {
+  hh: 300,
   trudvsem: 300,
   remoteok: 600,
   weworkremotely: 600,
@@ -52,22 +54,25 @@ function requestUrl(request) {
   return new URL(request.url || "/", `https://${request.headers?.host || "localhost"}`);
 }
 
-async function fetchWithTimeout(url, { parse = "json", headers = {} } = {}) {
+async function fetchResponseWithTimeout(url, { headers = {} } = {}) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), UPSTREAM_TIMEOUT_MS);
   try {
-    const response = await fetch(url, {
-      signal: controller.signal,
-      headers: {
-        Accept: parse === "json" ? "application/json" : "application/rss+xml, application/xml, text/xml",
-        ...headers,
-      },
-    });
-    if (!response.ok) throw new Error(`Upstream HTTP ${response.status}`);
-    return parse === "json" ? response.json() : response.text();
+    return await fetch(url, { signal: controller.signal, headers });
   } finally {
     clearTimeout(timeout);
   }
+}
+
+async function fetchWithTimeout(url, { parse = "json", headers = {} } = {}) {
+  const response = await fetchResponseWithTimeout(url, {
+    headers: {
+      Accept: parse === "json" ? "application/json" : "application/rss+xml, application/xml, text/xml",
+      ...headers,
+    },
+  });
+  if (!response.ok) throw new Error(`Upstream HTTP ${response.status}`);
+  return parse === "json" ? response.json() : response.text();
 }
 
 function feedMeta(source, now = Date.now()) {
@@ -92,6 +97,21 @@ async function mapConcurrent(items, limit, worker) {
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
   return output;
+}
+
+async function loadHh(url) {
+  const validation = validateHhRequest(url.searchParams);
+  if (!validation.ok) return { status: validation.status, body: { error: validation.error } };
+
+  const upstream = await fetchResponseWithTimeout(buildHhUrl(validation), { headers: hhHeaders() });
+  if (upstream.status === 403) {
+    return {
+      status: 200,
+      body: { items: [], page: validation.page, pages: 0, unavailable: "captcha_or_access_restriction" },
+    };
+  }
+  if (!upstream.ok) throw new Error(`Upstream HTTP ${upstream.status}`);
+  return { status: 200, body: await upstream.json() };
 }
 
 async function loadPublicFeed(source, query) {
@@ -152,6 +172,10 @@ export async function handleSource(source, request, response) {
   if (request.method !== "GET") return sendJson(response, 405, { error: "method_not_allowed" });
   const url = requestUrl(request);
   try {
+    if (source === "hh") {
+      const result = await loadHh(url);
+      return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.hh : 0);
+    }
     if (source === "trudvsem") {
       const result = await loadTrudvsem(url);
       return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.trudvsem : 0);

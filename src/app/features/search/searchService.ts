@@ -17,6 +17,8 @@ export interface SearchResult {
   source: RealJobSource;
   url: string;
   tags: string[];
+  description?: string;
+  sourceUrl?: string;
 }
 
 export interface SearchRequest {
@@ -61,6 +63,7 @@ interface HhPayload {
   items: HhVacancy[];
   page: number;
   pages: number;
+  unavailable?: string;
 }
 
 interface ArbeitnowVacancy {
@@ -86,6 +89,9 @@ interface BffSearchResult {
   source?: string;
   url: string;
   tags: string[];
+  description?: string;
+  sourceUrl?: string;
+  viewerPath?: string;
 }
 
 interface BffFeedPayload {
@@ -101,11 +107,13 @@ interface AdapterResult {
 
 const REQUEST_TIMEOUT_MS = 12_000;
 const CAPABILITY_TIMEOUT_MS = 1_500;
-const HH_PAGE_SIZE = 50;
 const ATS_SOURCES = new Set<AtsJobSource>(["greenhouse", "lever", "ashby", "smartrecruiters", "recruitee", "workable"]);
 const AUTOMATIC_FIRST_PAGE_SOURCES: AdapterSource[] = [
   "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats",
 ];
+const BACKEND_REQUIRED_SOURCES = new Set<AdapterSource>([
+  "hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats",
+]);
 let backendCapability: Promise<boolean> | null = null;
 
 function formatDate(timestamp: number): string {
@@ -194,15 +202,18 @@ async function searchBffFeed(request: SearchRequest, source: FeedJobSource): Pro
     headers: { Accept: "application/json" },
   });
   const results = (Array.isArray(payload.results) ? payload.results : [])
-    .map((item) => ({ ...item, source, publishedAt: formatDate(item.publishedTimestamp) }))
+    .map((item) => ({
+      ...item,
+      url: source === "trudvsem" && item.viewerPath
+        ? new URL(item.viewerPath, window.location.origin).toString()
+        : item.url,
+      source,
+      publishedAt: formatDate(item.publishedTimestamp),
+    }))
     .filter((item) => isSearchResult(item))
     .filter((item) => source !== "trudvsem" || matchesArea(request.areaId, item.location))
     .filter((item) => source !== "trudvsem" || matchesRubSalary(request.salaryFrom, item.salary));
-  return {
-    results,
-    nextHhPage: null,
-    refresh: payload.meta ? { [source]: payload.meta } : undefined,
-  };
+  return { results, nextHhPage: null, refresh: payload.meta ? { [source]: payload.meta } : undefined };
 }
 
 async function searchAts(request: SearchRequest): Promise<AdapterResult> {
@@ -220,21 +231,12 @@ async function searchAts(request: SearchRequest): Promise<AdapterResult> {
 
 async function searchHh(request: SearchRequest): Promise<AdapterResult> {
   const page = Math.max(0, request.page ?? 0);
-  const params = new URLSearchParams({
-    text: request.query,
-    per_page: String(HH_PAGE_SIZE),
-    page: String(page),
-    order_by: "publication_time",
-  });
-  if (request.areaId !== "0") params.set("area", request.areaId);
-  if (request.salaryFrom) {
-    params.set("salary", request.salaryFrom);
-    params.set("only_with_salary", "true");
-  }
-  const payload = await fetchWithTimeout<HhPayload>(`https://api.hh.ru/vacancies?${params}`, {
-    headers: { Accept: "application/json" },
-  });
-  const results = payload.items.map((item) => {
+  const params = new URLSearchParams({ q: request.query, area: request.areaId, page: String(page) });
+  if (request.salaryFrom) params.set("salary", request.salaryFrom);
+  const payload = await fetchWithTimeout<HhPayload>(`/api/jobs/hh?${params}`, { headers: { Accept: "application/json" } });
+  if (payload.unavailable) throw new Error(`HH unavailable: ${payload.unavailable}`);
+
+  const results = (Array.isArray(payload.items) ? payload.items : []).map((item) => {
     const timestamp = item.published_at ? Date.parse(item.published_at) : 0;
     const tags = [
       item.experience?.name,
@@ -307,13 +309,11 @@ export function mergeSearchResults(...groups: SearchResult[][]): SearchResult[] 
 }
 
 async function sourcesForRequest(request: SearchRequest): Promise<{ sources: AdapterSource[]; backendAvailable: boolean }> {
-  if ((request.page ?? 0) > 0) return { sources: request.sources, backendAvailable: await detectBackend() };
   const backendAvailable = await detectBackend();
+  const requested = request.sources.filter((source) => backendAvailable || !BACKEND_REQUIRED_SOURCES.has(source));
+  if ((request.page ?? 0) > 0) return { sources: requested, backendAvailable };
   const automatic = backendAvailable ? AUTOMATIC_FIRST_PAGE_SOURCES : [];
-  return {
-    sources: Array.from(new Set([...automatic, ...request.sources])),
-    backendAvailable,
-  };
+  return { sources: Array.from(new Set([...automatic, ...requested])), backendAvailable };
 }
 
 export async function searchJobs(request: SearchRequest): Promise<SearchResponse> {

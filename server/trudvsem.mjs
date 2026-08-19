@@ -10,17 +10,48 @@ export function salaryLabel(vacancy) {
   return "Зарплата не указана";
 }
 
+function companyCode(vacancy) {
+  const company = vacancy?.company || {};
+  return String(company.companycode || company.companyCode || company.ogrn || "").trim();
+}
+
+export function canonicalTrudvsemUrl(vacancy) {
+  const id = String(vacancy?.id || "").trim();
+  const code = companyCode(vacancy);
+  if (id && code) return `https://trudvsem.ru/vacancy/card/${encodeURIComponent(code)}/${encodeURIComponent(id)}`;
+
+  const raw = String(vacancy?.vac_url || "").trim();
+  if (!raw) return "";
+  try {
+    const parsed = new URL(raw);
+    if (!/^https?:$/.test(parsed.protocol)) return "";
+    if (parsed.hostname === "trudvsem.ru" || parsed.hostname.endsWith(".trudvsem.ru")) {
+      parsed.protocol = "https:";
+      parsed.hostname = "trudvsem.ru";
+      parsed.port = "";
+    }
+    return parsed.toString();
+  } catch {
+    return "";
+  }
+}
+
 export function normalizeTrudvsemVacancy(entry) {
   const vacancy = entry?.vacancy || entry;
   if (!vacancy || typeof vacancy !== "object") return null;
 
   const id = String(vacancy.id || "").trim();
   const title = String(vacancy["job-name"] || "").trim();
-  const url = String(vacancy.vac_url || "").trim();
-  if (!id || !title || !url) return null;
+  const sourceUrl = canonicalTrudvsemUrl(vacancy);
+  if (!id || !title || !sourceUrl) return null;
 
+  const code = companyCode(vacancy);
   const timestamp = Date.parse(String(vacancy["creation-date"] || ""));
   const experience = Number(vacancy.requirement?.experience);
+  const description = [vacancy.duty, vacancy.description, vacancy.requirement?.qualification]
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join("\n\n");
   const tags = [
     vacancy.employment,
     vacancy.schedule,
@@ -36,8 +67,11 @@ export function normalizeTrudvsemVacancy(entry) {
     location: String(vacancy.region?.name || vacancy.addresses?.address?.[0]?.location || "Локация не указана"),
     experience: Number.isFinite(experience) ? `${experience} г. опыта` : "Опыт не указан",
     publishedTimestamp: Number.isFinite(timestamp) ? timestamp : 0,
-    url,
+    url: sourceUrl,
+    sourceUrl,
+    ...(code ? { viewerPath: `/api/jobs/trudvsem-view?company=${encodeURIComponent(code)}&id=${encodeURIComponent(id)}` } : {}),
     tags,
+    ...(description ? { description } : {}),
   };
 }
 

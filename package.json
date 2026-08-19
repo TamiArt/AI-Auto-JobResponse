@@ -16,7 +16,7 @@
     "test:smoke": "node scripts/smoke-server.mjs",
     "test:e2e": "playwright test",
     "check:structure": "node scripts/check-structure.mjs",
-    "check:server": "node --check server/index.mjs && node --check server/httpPolicy.mjs && node --check server/trudvsem.mjs && node --check server/publicFeeds.mjs && node --check server/atsFeeds.mjs && node --check server/atsRegistry.mjs && node --check api/_shared.mjs && node --check api/health.mjs && node --check api/status.mjs && node --check api/jobs/trudvsem.mjs && node --check api/jobs/remoteok.mjs && node --check api/jobs/weworkremotely.mjs && node --check api/jobs/remotive.mjs && node --check api/jobs/jobicy.mjs && node --check api/jobs/ats.mjs",
+    "check:server": "node --check server/index.mjs && node --check server/httpPolicy.mjs && node --check server/hh.mjs && node --check server/trudvsem.mjs && node --check server/trudvsemView.mjs && node --check server/publicFeeds.mjs && node --check server/atsFeeds.mjs && node --check server/atsRegistry.mjs && node --check api/_shared.mjs && node --check api/health.mjs && node --check api/status.mjs && node --check api/jobs/hh.mjs && node --check api/jobs/trudvsem.mjs && node --check api/jobs/trudvsem-view.mjs && node --check api/jobs/remoteok.mjs && node --check api/jobs/weworkremotely.mjs && node --check api/jobs/remotive.mjs && node --check api/jobs/jobicy.mjs && node --check api/jobs/ats.mjs",
     "check": "npm run check:structure && npm run check:server && npm run test:contracts && npm run typecheck && npm run build && npm run test:smoke",
     "check:full": "npm run check && npm run test:e2e"
   },
