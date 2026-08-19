@@ -1,16 +1,6 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, type JSX } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import {
-  Zap, Settings, History, LayoutDashboard, Moon, Sun, Eye, EyeOff,
-  Play, Square, Copy, Check, ChevronDown, ChevronUp, Loader2,
-  TrendingUp, Target, AlertCircle, CheckCircle, XCircle,
-  SkipForward, RefreshCw, ExternalLink, Bot, User, Key, FileText,
-  BookOpen, ArrowRight, Shield, Send, X, Pencil, Building2,
-  Briefcase, MapPin, Clock, Download, Upload, HelpCircle, Sparkles,
-  Cpu, Globe, ChevronRight, Plus, Inbox, BrainCircuit, Hand,
-  RotateCcw, ThumbsUp, SkipForward as Skip, Rocket, Layers,
-  Bell, ChevronLeft
-} from "lucide-react";
+import { Zap, Settings, History, LayoutDashboard, Moon, Sun, Play, Square, TrendingUp, Target, CheckCircle, RefreshCw, ExternalLink, BookOpen, Briefcase, Plus, Inbox, BrainCircuit, Hand, Bell, Sparkles, Cpu, Globe, ChevronRight, Key, User } from "lucide-react";
 import { toast, Toaster } from "sonner";
 import { PROFILE_PRESETS } from "./data/profile-presets";
 import { AREA_OPTIONS, DEFAULT_CONFIG, JOB_SOURCES, validateImportedConfig, type AppRecord, type AppStatus, type Config, type JobSource, type Position, type Provider, type Tab, type Theme } from "./model";
@@ -398,20 +388,18 @@ export default function App() {
   const [filterStatus, setFilterStatus] = useState<AppStatus | "Все">("Все");
   const [showAddPosition, setShowAddPosition] = useState(false);
   const [positions, setPositions] = useState<Position[]>(() => {
-    try { return JSON.parse(localStorage.getItem("huntpulse_positions") || "[]"); } catch { return []; }
+    try { return JSON.parse(sessionStorage.getItem(POSITIONS_SESSION_KEY) || "[]"); } catch { return []; }
   });
   const [foundCount] = useState(0);
   const [invites] = useState(0);
   const [guideSection, setGuideSection] = useState<string | null>(null);
 
-  const [config, setConfig] = useState<Config>(() => {
-    try { const r = validateImportedConfig(JSON.parse(localStorage.getItem("huntpulse_config") || "{}")); return r.valid ? r.data : DEFAULT_CONFIG; } catch { return DEFAULT_CONFIG; }
-  });
+  const [config, setConfig] = useState<Config>(loadConfig);
 
   useEffect(() => { document.documentElement.classList.toggle("dark", theme === "dark"); }, [theme]);
   useEffect(() => { localStorage.setItem("huntpulse_applications", JSON.stringify(applications)); }, [applications]);
 
-  const saveConfig = useCallback((c: Config) => { setConfig(c); localStorage.setItem("huntpulse_config", JSON.stringify(c)); }, []);
+  const saveConfig = useCallback((c: Config) => { setConfig(c); persistConfig(c); }, []);
   const updateConfig = (partial: Partial<Config>) => saveConfig({ ...config, ...partial });
 
   const todayApps = applications.filter(a => new Date(a.date).toDateString() === new Date().toDateString());
@@ -425,7 +413,7 @@ export default function App() {
   const handleAddPosition = (p: Position) => {
     const next = [...positions, p];
     setPositions(next);
-    localStorage.setItem("huntpulse_positions", JSON.stringify(next));
+    sessionStorage.setItem(POSITIONS_SESSION_KEY, JSON.stringify(next));
   };
 
   const handleStartClick = () => {
@@ -618,7 +606,7 @@ export default function App() {
                       <h2 className="text-sm font-bold font-mono">Параметры автопоиска</h2>
                     </div>
                     <div className="space-y-4">
-                      <Field label="Должность" value={config.jobTitle} onChange={v => updateConfig({ jobTitle: v })} placeholder="Frontend Developer" icon={<Target size={12} />} />
+                      <Field label="Профессия или должность" value={config.jobTitle} onChange={v => updateConfig({ jobTitle: v })} placeholder="QA-инженер, дизайнер, художник…" icon={<Target size={12} />} />
                       <Field label="Зарплата от (₽)" value={config.salaryFrom} onChange={v => updateConfig({ salaryFrom: v })} placeholder="200000" type="number" />
                       <Field label="Зарплата до (₽)" value={config.salaryTo} onChange={v => updateConfig({ salaryTo: v })} placeholder="400000" type="number" />
                       <div className="space-y-1.5">
@@ -652,7 +640,7 @@ export default function App() {
             <motion.div key="history" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }} transition={{ duration: 0.2 }}>
               <div className="flex items-center justify-between mb-5 flex-wrap gap-3">
                 <div>
-                  <h2 className="text-lg font-bold" style={{ fontFamily: "Oxanium, monospace" }}>История откликов</h2>
+                  <h2 className="text-lg font-bold" style={{ fontFamily: "Oxanium, monospace" }}>История откликов <span className="text-xs text-amber-400">(демо)</span></h2>
                   <p className="text-xs font-mono text-muted-foreground mt-0.5">{applications.length} записей</p>
                 </div>
                 <button className="flex items-center gap-1.5 px-3 py-2 rounded-lg border border-border text-xs font-mono text-muted-foreground hover:text-foreground transition-colors min-h-[40px]">
@@ -689,7 +677,7 @@ export default function App() {
               <div className="max-w-2xl space-y-4">
                 <div>
                   <h2 className="text-lg font-bold" style={{ fontFamily: "Oxanium, monospace" }}>Настройки</h2>
-                  <p className="text-xs font-mono text-muted-foreground mt-0.5">Данные хранятся локально в браузере</p>
+                  <p className="text-xs font-mono text-muted-foreground mt-0.5">Обычные настройки хранятся локально; ключи — только до закрытия вкладки</p>
                 </div>
 
                 {/* AI Provider */}
@@ -762,9 +750,9 @@ export default function App() {
 
                 <ConfigPanel config={config} onImport={saveConfig} />
 
-                <div className="rounded-xl border border-border bg-card p-4">
-                  <div className="text-xs font-mono uppercase tracking-wider text-muted-foreground mb-2">PWA</div>
-                  <p className="text-xs text-muted-foreground font-mono leading-relaxed">HuntPulse AI — Progressive Web App. Нажмите «Добавить на главный экран» в браузере для установки без App Store.</p>
+                <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
+                  <div className="text-xs font-mono uppercase tracking-wider text-amber-400 mb-2">Безопасность</div>
+                  <p className="text-xs text-muted-foreground font-mono leading-relaxed">Не передавайте экспортированный конфиг третьим лицам. API-ключ намеренно не включается в файл и не сохраняется между сессиями браузера.</p>
                 </div>
               </div>
             </motion.div>
