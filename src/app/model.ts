@@ -1,9 +1,22 @@
+/**
+ * Legacy compatibility model.
+ * Эти контракты сохранены намеренно: связанные продуктовые функции отложены,
+ * а не удалены. Рабочий search-flow использует `domain/types.ts`.
+ */
+export const DEFERRED_FEATURES = {
+  aiAssistant: "Будет реализовано позже",
+  hhAccountIntegration: "Будет реализовано позже",
+  applicationTracker: "Будет реализовано позже",
+  automaticResponses: "Будет реализовано позже",
+} as const;
+
 export type Theme = "dark" | "light";
 export type Tab = "dashboard" | "config" | "history" | "settings" | "guide";
 export type AppStatus = "Отправлено" | "В процессе" | "Ошибка" | "Пропущено";
 export type Provider = "gemini" | "groq" | "openrouter";
 export type JobSource = "hh" | "habr" | "djinni" | "remoteco" | "remoteok" | "telegram" | "arbeitnow";
 
+/** @deprecated HH account integration будет реализована позже. */
 export interface Position {
   id: string;
   hhToken: string;
@@ -15,6 +28,7 @@ export interface Position {
   createdAt: string;
 }
 
+/** @deprecated Job application tracker будет реализован позже. */
 export interface AppRecord {
   id: string;
   vacancyId: string;
@@ -28,6 +42,7 @@ export interface AppRecord {
   source?: JobSource;
 }
 
+/** @deprecated AI/auto-response settings будут реализованы позже. */
 export interface Config {
   provider: Provider;
   apiKey: string;
@@ -78,6 +93,10 @@ export const JOB_SOURCES: Record<JobSource, {
   arbeitnow: { label: "Arbeitnow", url: "https://www.arbeitnow.com", color: "text-pink-400", bg: "bg-pink-400/10", border: "border-pink-400/30", free: true, geo: "EU/World", desc: "Открытый API международных вакансий.", api: "https://www.arbeitnow.com/api/job-board-api" },
 };
 
+/**
+ * @deprecated Legacy import format сохранён для будущей миграции настроек.
+ * Никакие секреты из этой модели не используются рабочим поиском.
+ */
 export function validateImportedConfig(raw: unknown): { valid: true; data: Config } | { valid: false; error: string } {
   if (!raw || typeof raw !== "object" || Array.isArray(raw)) return { valid: false, error: "Файл должен содержать JSON-объект" };
   const value = raw as Record<string, unknown>;

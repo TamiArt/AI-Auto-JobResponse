@@ -4,7 +4,8 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - agent/baseline-modular-fix
+      - main
+      - fix/production-hardening
   pull_request:
     branches:
       - main

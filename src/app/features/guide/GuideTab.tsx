@@ -1,10 +1,10 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowRight, BookOpen, ChevronDown, ChevronUp, Globe, History, Search, Settings, Shield } from "lucide-react";
+import { ArrowRight, BookOpen, ChevronDown, ChevronUp, Globe, History, Hourglass, Search, Settings, Shield } from "lucide-react";
 
 const GUIDE_ALIASES: Record<string, string> = {
-  gemini: "status", groq: "status", openrouter: "status", hhtoken: "privacy",
-  profile: "privacy", resumeid: "privacy", sources: "search", flow: "architecture",
+  gemini: "later", groq: "later", openrouter: "later", hhtoken: "later",
+  profile: "privacy", resumeid: "later", sources: "search", flow: "architecture",
 };
 
 function resolveSection(section?: string | null): string {
@@ -14,6 +14,15 @@ function resolveSection(section?: string | null): string {
 
 function Notice({ children }: { children: ReactNode }) {
   return <div className="rounded-xl border border-amber-400/25 bg-amber-400/8 p-3 text-xs font-mono text-amber-300">{children}</div>;
+}
+
+function DeferredItem({ title }: { title: string }) {
+  return (
+    <div className="rounded-lg border border-border bg-muted/30 p-3">
+      <div className="text-sm font-semibold">{title}</div>
+      <div className="mt-1 text-[11px] font-mono text-amber-300">Будет реализовано позже</div>
+    </div>
+  );
 }
 
 export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: () => void; initialSection?: string | null }) {
@@ -31,8 +40,8 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
       content: (
         <div className="space-y-3 text-sm text-foreground/75 leading-relaxed">
           <p><strong>Основной продукт — реальный поиск вакансий.</strong> Приложение открывается сразу на поиске и не требует настройки AI, токенов или автоматических откликов.</p>
-          <p>Можно искать вакансии, открывать оригинальные объявления, сохранять избранное, повторять последние запросы и загружать следующие страницы HH.</p>
-          <Notice>Неработающие AI-генерация и автоматическая отправка откликов удалены из основного интерфейса и не участвуют в поисковом сценарии.</Notice>
+          <p>Можно искать вакансии, открывать объявления, сохранять избранное, повторять последние запросы и загружать следующие страницы HH.</p>
+          <Notice>Функции AI, HH-аккаунта и трекера откликов не имитируют работу: они сохранены в техническом backlog и будут реализованы позже.</Notice>
         </div>
       ),
     },
@@ -42,9 +51,9 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
       title: "Источники и поиск",
       content: (
         <div className="space-y-3 text-sm text-foreground/75 leading-relaxed">
-          <p>Поиск объединяет «Работа России», HH.ru, Arbeitnow, Remote OK, We Work Remotely и прямые публичные career feeds работодателей.</p>
-          <p>ATS-слой сейчас поддерживает Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee и Workable. Работодатели хранятся в отдельном реестре, поэтому новые компании можно добавлять без изменения React-компонентов.</p>
-          <p>Каждая вакансия хранит оригинальную публичную ссылку конкретного объявления. Результат без безопасного `http/https` URL отбрасывается до UI.</p>
+          <p>Поиск объединяет «Работа России», HH.ru, Arbeitnow, Remote OK, We Work Remotely, Jobicy, Remotive и публичные career ATS работодателей.</p>
+          <p>ATS-слой поддерживает Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee и Workable. Работодатели хранятся в отдельном реестре.</p>
+          <p>Remote feeds и ATS на Vercel получают query-независимый snapshot, а фильтрация поискового текста выполняется после получения snapshot. Это не создаёт отдельное upstream-refresh окно для каждого запроса.</p>
           <Notice>HH.ru может потребовать CAPTCHA для неавторизованных запросов. HuntPulse не обходит CAPTCHA и не зависит от одного HH.</Notice>
         </div>
       ),
@@ -55,9 +64,26 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
       title: "Данные и приватность",
       content: (
         <div className="space-y-3 text-sm text-foreground/75 leading-relaxed">
-          <p>Для поиска не нужны HH access token, Resume ID или AI API key. BFF обращается только к публичным источникам вакансий и не принимает пароли пользователя.</p>
+          <p>Для текущего поиска не нужны HH access token, Resume ID или AI API key. BFF обращается только к публичным источникам вакансий и не принимает пароли пользователя.</p>
           <p>Настройки поиска, история запросов и избранное хранятся локально в браузере.</p>
           <Notice>Не вводите секреты сторонних сервисов: текущему поисковому приложению они не нужны.</Notice>
+        </div>
+      ),
+    },
+    {
+      id: "later",
+      icon: <Hourglass size={16} />,
+      title: "Будет реализовано позже",
+      content: (
+        <div className="space-y-3 text-sm text-foreground/75 leading-relaxed">
+          <p>Эти функции не удалены из технического плана, но сейчас отключены, чтобы не показывать пользователю фиктивное поведение.</p>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <DeferredItem title="AI-помощник для черновика отклика" />
+            <DeferredItem title="HH OAuth и выбор резюме" />
+            <DeferredItem title="Трекер откликов и интервью" />
+            <DeferredItem title="Сохранённые поиски и мониторинг" />
+          </div>
+          <Notice>Автоматическая отправка отклика появится только после отдельного проектирования безопасного официального flow.</Notice>
         </div>
       ),
     },
@@ -68,7 +94,7 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
       content: (
         <div className="space-y-3 text-sm text-foreground/75 leading-relaxed">
           <p>Источники подключены отдельными adapters, BFF-нормализация вынесена в pure-модули, а frontend проверяет runtime-контракт каждой вакансии.</p>
-          <p>ATS работодателей опрашиваются с ограничением параллелизма и отдельным cache на каждый board. Ошибка одного работодателя не должна ломать общий поиск.</p>
+          <p>ATS работодателей опрашиваются с ограничением параллелизма. Ошибка одного работодателя не должна ломать общий поиск.</p>
           <p>Контрактные тесты запускаются встроенным `node:test`, поэтому не требуют новых npm-библиотек или платных сервисов.</p>
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs font-mono">
             <div className="rounded-lg border border-border bg-muted/40 p-3"><Search size={13} className="mb-2" />Источники независимо</div>
@@ -85,7 +111,7 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
       <div className="max-w-2xl">
         <div className="mb-5">
           <h1 className="text-lg font-bold mb-1" style={{ fontFamily: "Oxanium, monospace" }}>Руководство</h1>
-          <p className="text-xs font-mono text-muted-foreground">Только фактически работающие возможности текущей версии.</p>
+          <p className="text-xs font-mono text-muted-foreground">Рабочие возможности и честный статус отложенных функций.</p>
         </div>
 
         <div className="space-y-2">

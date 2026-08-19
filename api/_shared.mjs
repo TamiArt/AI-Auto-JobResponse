@@ -7,13 +7,11 @@ import {
   normalizeRemoteOkPayload,
   normalizeRemotivePayload,
   normalizeWwrRss,
-  validatePublicFeedQuery,
 } from "../server/publicFeeds.mjs";
 import { buildAtsUrl, filterAtsResults, normalizeAtsPayload } from "../server/atsFeeds.mjs";
-import { ATS_EMPLOYERS } from "../server/atsRegistry.mjs";
+import { ATS_CONCURRENCY, ATS_EMPLOYERS } from "../server/atsRegistry.mjs";
 
 const UPSTREAM_TIMEOUT_MS = 12_000;
-const ATS_CONCURRENCY = 8;
 const API_URLS = {
   trudvsem: "http://opendata.trudvsem.ru/api/v1/vacancies",
   remoteok: "https://remoteok.com/api",
@@ -23,6 +21,8 @@ const API_URLS = {
 };
 
 export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats"];
+export const SNAPSHOT_SOURCES = ["remoteok", "weworkremotely", "remotive", "jobicy", "ats"];
+const SNAPSHOT_SOURCE_SET = new Set(SNAPSHOT_SOURCES);
 export const CACHE_SECONDS = {
   hh: 300,
   trudvsem: 300,
@@ -114,7 +114,7 @@ async function loadHh(url) {
   return { status: 200, body: await upstream.json() };
 }
 
-async function loadPublicFeed(source, query) {
+async function loadPublicSnapshot(source) {
   let jobs;
   if (source === "remoteok") {
     jobs = normalizeRemoteOkPayload(await fetchWithTimeout(API_URLS.remoteok, {
@@ -129,7 +129,7 @@ async function loadPublicFeed(source, query) {
   } else {
     throw new Error("unsupported_source");
   }
-  return { results: filterPublicFeedResults(jobs, query), meta: feedMeta(source) };
+  return { results: filterPublicFeedResults(jobs, ""), meta: feedMeta(source) };
 }
 
 async function loadTrudvsem(url) {
@@ -140,7 +140,7 @@ async function loadTrudvsem(url) {
   return { status: 200, body: normalizeTrudvsemPayload(payload, validation.offset) };
 }
 
-async function loadAts(query) {
+async function loadAtsSnapshot() {
   const rows = await mapConcurrent(ATS_EMPLOYERS, ATS_CONCURRENCY, async (employer) => {
     try {
       const jobs = normalizeAtsPayload(await fetchWithTimeout(buildAtsUrl(employer)), employer);
@@ -158,7 +158,7 @@ async function loadAts(query) {
     providers[row.employer.provider] = status;
   }
   return {
-    results: filterAtsResults(rows.flatMap((row) => row.jobs), query),
+    results: filterAtsResults(rows.flatMap((row) => row.jobs), ""),
     meta: {
       employers: ATS_EMPLOYERS.length,
       availableEmployers: rows.filter((row) => row.jobs.length).length,
@@ -166,6 +166,12 @@ async function loadAts(query) {
       ...feedMeta("ats"),
     },
   };
+}
+
+function rejectSnapshotQuery(url, response) {
+  if (!url.searchParams.has("q")) return false;
+  sendJson(response, 400, { error: "snapshot_query_not_allowed" });
+  return true;
 }
 
 export async function handleSource(source, request, response) {
@@ -180,11 +186,9 @@ export async function handleSource(source, request, response) {
       const result = await loadTrudvsem(url);
       return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.trudvsem : 0);
     }
-    const validation = validatePublicFeedQuery(url.searchParams.get("q"));
-    if (!validation.ok) return sendJson(response, validation.status, { error: validation.error });
-    const body = source === "ats"
-      ? await loadAts(validation.query)
-      : await loadPublicFeed(source, validation.query);
+    if (!SNAPSHOT_SOURCE_SET.has(source)) return sendJson(response, 404, { error: "unsupported_source" });
+    if (rejectSnapshotQuery(url, response)) return;
+    const body = source === "ats" ? await loadAtsSnapshot() : await loadPublicSnapshot(source);
     return sendJson(response, 200, body, CACHE_SECONDS[source]);
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
@@ -205,6 +209,8 @@ export function handleStatus(request, response) {
     ok: true,
     runtime: "vercel-function",
     cache: "vercel-cdn",
+    cacheKeyPolicy: "source-snapshot",
+    snapshotSources: SNAPSHOT_SOURCES,
     upstreamTimeoutMs: UPSTREAM_TIMEOUT_MS,
     atsConcurrency: ATS_CONCURRENCY,
     cacheSeconds: CACHE_SECONDS,
