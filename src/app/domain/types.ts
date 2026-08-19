@@ -10,4 +10,5 @@ export interface Config {
   jobTitle: string;
   areaId: string;
   salaryFrom: string;
+  telegramChannels: string;
 }
