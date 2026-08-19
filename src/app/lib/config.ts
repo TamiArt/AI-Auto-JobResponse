@@ -8,6 +8,7 @@ export function validateImportedConfig(raw: unknown): { valid: true; data: Confi
   const value = raw as Record<string, unknown>;
   const areaId = String(value.areaId ?? "1");
   const salaryFrom = String(value.salaryFrom ?? "");
+  const telegramChannels = String(value.telegramChannels ?? "").trim();
 
   if (!/^\d+$/.test(areaId)) return { valid: false, error: "Некорректный идентификатор региона" };
   if (salaryFrom && (!/^\d+$/.test(salaryFrom) || Number(salaryFrom) < 0)) {
@@ -20,6 +21,7 @@ export function validateImportedConfig(raw: unknown): { valid: true; data: Confi
       jobTitle: String(value.jobTitle ?? "").trim(),
       areaId,
       salaryFrom,
+      telegramChannels,
     },
   };
 }
