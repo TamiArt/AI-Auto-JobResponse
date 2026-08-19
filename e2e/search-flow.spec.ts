@@ -5,19 +5,17 @@ const TEST_QUERY = "QA инженер";
 
 const emptyPayload = { results: [] };
 const jobicyPayload = {
-  results: [
-    {
-      id: "jobicy-e2e-1",
-      title: "QA Engineer",
-      company: "Example Product",
-      salary: "120000 USD",
-      location: "Remote",
-      experience: "Опыт не указан",
-      publishedTimestamp: 1_787_050_800_000,
-      url: TEST_JOB_URL,
-      tags: ["QA", "Remote"],
-    },
-  ],
+  results: [{
+    id: "jobicy-e2e-1",
+    title: "QA Engineer",
+    company: "Example Product",
+    salary: "120000 USD",
+    location: "Remote",
+    experience: "Опыт не указан",
+    publishedTimestamp: 1_787_050_800_000,
+    url: TEST_JOB_URL,
+    tags: ["QA", "Remote"],
+  }],
   meta: {
     lastUpdated: 1_787_050_800_000,
     nextRefresh: 1_787_054_400_000,
@@ -30,22 +28,16 @@ const jobicyPayload = {
 async function mockJobSources(page: Page) {
   await page.route("**/api/jobs/**", async (route) => {
     const url = new URL(route.request().url());
-    const body = url.pathname === "/api/jobs/jobicy" ? jobicyPayload : emptyPayload;
+    const body = url.pathname === "/api/jobs/jobicy"
+      ? jobicyPayload
+      : url.pathname === "/api/jobs/hh"
+        ? { items: [], page: 0, pages: 0 }
+        : emptyPayload;
     await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
   });
-
-  await page.route("https://api.hh.ru/**", (route) =>
-    route.fulfill({
-      status: 200,
-      contentType: "application/json",
-      body: JSON.stringify({ items: [], page: 0, pages: 0 }),
-    }),
-  );
-
   await page.route("https://www.arbeitnow.com/**", (route) =>
     route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
   );
-
   await page.context().route("https://example.com/jobs/**", (route) =>
     route.fulfill({ status: 200, contentType: "text/html", body: "<title>Example vacancy</title><h1>QA Engineer</h1>" }),
   );
@@ -90,8 +82,9 @@ test("critical job search flow works in a real browser", async ({ page }) => {
   await expect(page.getByRole("article").filter({ hasText: "QA Engineer" })).toBeVisible();
 });
 
-test("static preview without BFF still searches browser-safe sources", async ({ page }) => {
+test("static preview never calls HH directly and keeps browser-safe search", async ({ page }) => {
   let bffJobRequests = 0;
+  let directHhRequests = 0;
   await page.route("**/api/health", (route) =>
     route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><div id=\"root\"></div>" }),
   );
@@ -99,29 +92,26 @@ test("static preview without BFF still searches browser-safe sources", async ({ 
     bffJobRequests += 1;
     return route.abort();
   });
-  await page.route("https://api.hh.ru/**", (route) =>
+  await page.route("https://api.hh.ru/**", (route) => {
+    directHhRequests += 1;
+    return route.abort();
+  });
+  await page.route("https://www.arbeitnow.com/**", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({
-        items: [{
-          id: "static-1",
-          name: "QA Engineer",
-          alternate_url: TEST_JOB_URL,
-          published_at: "2026-08-19T12:00:00+0300",
-          employer: { name: "Static Preview Company" },
-          salary: { from: 200000, to: 250000, currency: "RUR" },
-          area: { name: "Москва" },
-          experience: { name: "1–3 года" },
-          professional_roles: [{ name: "Тестировщик" }],
-        }],
-        page: 0,
-        pages: 1,
-      }),
+      body: JSON.stringify({ data: [{
+        slug: "static-qa",
+        title: "QA Engineer",
+        company_name: "Static Preview Company",
+        description: "QA инженер",
+        tags: ["QA"],
+        location: "Москва",
+        remote: true,
+        created_at: 1_787_050_800,
+        url: TEST_JOB_URL,
+      }] }),
     }),
-  );
-  await page.route("https://www.arbeitnow.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
   );
 
   await page.goto("/");
@@ -132,4 +122,5 @@ test("static preview without BFF still searches browser-safe sources", async ({ 
   await expect(card).toBeVisible();
   await expect(card).toContainText("Static Preview Company");
   expect(bffJobRequests).toBe(0);
+  expect(directHhRequests).toBe(0);
 });
