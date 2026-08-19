@@ -1,37 +1,54 @@
-import { useRef } from "react";
+import { useRef, type ChangeEvent } from "react";
 import { Download, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { Config } from "../../domain/types";
 import { validateImportedConfig } from "../../lib/config";
 
-export function ConfigPanel({ config, onImport }: { config: Config; onImport: (c: Config) => void }) {
+export function ConfigPanel({ config, onImport }: { config: Config; onImport: (config: Config) => void }) {
   const fileRef = useRef<HTMLInputElement>(null);
+
   const handleExport = () => {
-    // API keys are credentials, not portable application settings.
-    const blob = new Blob([JSON.stringify({ ...config, apiKey: "" }, null, 2)], { type: "application/json" });
-    const url = URL.createObjectURL(blob); const a = document.createElement("a");
-    a.href = url; a.download = "huntpulse_config.json"; a.click(); URL.revokeObjectURL(url);
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "huntpulse_config.json";
+    link.click();
+    URL.revokeObjectURL(url);
     toast.success("Конфиг сохранён", { description: "Файл huntpulse_config.json скачан" });
   };
-  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]; if (!file) return;
-    if (!file.name.endsWith(".json")) { toast.error("Неверный формат", { description: "Выберите .json файл" }); return; }
+
+  const handleImport = (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    if (!file.name.endsWith(".json")) {
+      toast.error("Неверный формат", { description: "Выберите .json файл" });
+      return;
+    }
+
     const reader = new FileReader();
-    reader.onload = (ev) => {
+    reader.onload = (loadEvent) => {
       try {
-        const result = validateImportedConfig(JSON.parse(ev.target?.result as string));
-        if (!result.valid) { toast.error("Ошибка структуры JSON", { description: result.error }); return; }
+        const result = validateImportedConfig(JSON.parse(loadEvent.target?.result as string));
+        if (result.valid === false) {
+          toast.error("Ошибка структуры JSON", { description: result.error });
+          return;
+        }
         onImport(result.data);
-        toast.success("Конфиг загружен", { description: "Все поля обновлены" });
-      } catch { toast.error("Не удалось прочитать файл", { description: "Файл повреждён или не является валидным JSON" }); }
+        toast.success("Конфиг загружен", { description: "Настройки поиска обновлены" });
+      } catch {
+        toast.error("Не удалось прочитать файл", { description: "Файл повреждён или не является валидным JSON" });
+      }
     };
     reader.onerror = () => toast.error("Ошибка чтения файла");
-    reader.readAsText(file); if (fileRef.current) fileRef.current.value = "";
+    reader.readAsText(file);
+    if (fileRef.current) fileRef.current.value = "";
   };
+
   return (
     <div className="rounded-xl border border-border bg-card p-4">
       <div className="text-xs font-mono uppercase tracking-wider text-muted-foreground border-b border-border pb-2 mb-4">JSON конфигурация</div>
-      <p className="text-xs text-foreground/60 font-mono leading-relaxed mb-4">Экспортируйте настройки для резервной копии или переноса на другое устройство.</p>
+      <p className="text-xs text-foreground/60 font-mono leading-relaxed mb-4">Экспортируйте профессию, регион и минимальную зарплату для резервной копии или переноса на другое устройство.</p>
       <div className="flex gap-3">
         <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-border text-sm font-mono text-muted-foreground hover:text-foreground hover:border-[var(--neon-violet)]/30 transition-all min-h-[48px]">
           <Download size={14} />Скачать
