@@ -15,6 +15,7 @@ const jobicyPayload = {
     publishedTimestamp: 1_787_050_800_000,
     url: TEST_JOB_URL,
     tags: ["QA", "Remote"],
+    description: "QA инженер, тестирование качества продукта",
   }],
   meta: {
     lastUpdated: 1_787_050_800_000,

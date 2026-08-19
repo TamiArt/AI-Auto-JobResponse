@@ -121,9 +121,10 @@ export function normalizeAtsPayload(payload, employer) {
 }
 
 export function filterAtsResults(results, query) {
+  const list = Array.isArray(results) ? results : [];
   const terms = text(query).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").split(/\s+/).filter(Boolean);
-  if (!terms.length) return [];
-  return results.filter((item) => {
+  if (!terms.length) return list;
+  return list.filter((item) => {
     const haystack = [item.title, item.company, item.location, ...(item.tags || [])]
       .join(" ").toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
     return terms.every((term) => haystack.includes(term));

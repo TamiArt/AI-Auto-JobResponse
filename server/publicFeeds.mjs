@@ -139,9 +139,10 @@ export function normalizeJobicyPayload(payload) {
 }
 
 export function filterPublicFeedResults(results, query) {
+  const list = Array.isArray(results) ? results : [];
   const terms = text(query).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").split(/\s+/).filter(Boolean);
-  if (!terms.length) return [];
-  return results.filter((job) => {
+  if (!terms.length) return list;
+  return list.filter((job) => {
     const haystack = [job.title, job.company, job.location, ...(job.tags || [])]
       .join(" ").toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
     return terms.every((term) => haystack.includes(term));

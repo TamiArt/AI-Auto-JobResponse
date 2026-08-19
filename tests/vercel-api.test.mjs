@@ -1,6 +1,14 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CACHE_SECONDS, handleHealth, handleSource, handleStatus, SOURCE_NAMES } from "../api/_shared.mjs";
+import {
+  CACHE_SECONDS,
+  handleHealth,
+  handleSource,
+  handleStatus,
+  SNAPSHOT_SOURCES,
+  SOURCE_NAMES,
+} from "../api/_shared.mjs";
+import { ATS_CONCURRENCY } from "../server/atsRegistry.mjs";
 import { HH_USER_AGENT } from "../server/hh.mjs";
 
 function createResponse() {
@@ -28,17 +36,64 @@ test("Vercel health endpoint exposes capability contract", () => {
   assert.equal(response.getHeader("x-content-type-options"), "nosniff");
 });
 
-test("Vercel status reports CDN cache windows without upstream calls", () => {
+test("Vercel status reports source-snapshot cache policy without upstream calls", () => {
   const response = createResponse();
   handleStatus({ method: "GET", headers: { host: "localhost" }, url: "/api/status" }, response);
   const body = JSON.parse(response.body);
   assert.equal(body.runtime, "vercel-function");
   assert.equal(body.cache, "vercel-cdn");
+  assert.equal(body.cacheKeyPolicy, "source-snapshot");
+  assert.deepEqual(body.snapshotSources, SNAPSHOT_SOURCES);
+  assert.equal(body.atsConcurrency, ATS_CONCURRENCY);
   assert.equal(body.cacheSeconds.hh, 300);
   assert.equal(body.cacheSeconds.jobicy, 3600);
   assert.equal(body.cacheSeconds.remotive, 21600);
   assert.equal(body.cacheSeconds.ats, 1800);
   assert.deepEqual(body.cacheSeconds, CACHE_SECONDS);
+});
+
+test("query-independent Jobicy snapshot works without q and exposes one-hour CDN TTL", async () => {
+  const originalFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ jobs: [{
+    id: 9,
+    jobTitle: "QA Engineer",
+    companyName: "Example",
+    url: "https://jobicy.com/jobs/example-role",
+  }] }), { status: 200, headers: { "Content-Type": "application/json" } });
+  try {
+    const response = createResponse();
+    await handleSource("jobicy", {
+      method: "GET",
+      headers: { host: "localhost" },
+      url: "/api/jobs/jobicy",
+    }, response);
+    const body = JSON.parse(response.body);
+    assert.equal(response.statusCode, 200);
+    assert.equal(body.results.length, 1);
+    assert.equal(body.results[0].title, "QA Engineer");
+    assert.equal(response.getHeader("vercel-cdn-cache-control").includes("s-maxage=3600"), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
+});
+
+test("snapshot endpoints reject query-specific variants before upstream fetch", async () => {
+  const originalFetch = globalThis.fetch;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => { fetchCalls += 1; throw new Error("must not fetch"); };
+  try {
+    const response = createResponse();
+    await handleSource("remotive", {
+      method: "GET",
+      headers: { host: "localhost" },
+      url: "/api/jobs/remotive?q=QA",
+    }, response);
+    assert.equal(response.statusCode, 400);
+    assert.deepEqual(JSON.parse(response.body), { error: "snapshot_query_not_allowed" });
+    assert.equal(fetchCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+  }
 });
 
 test("HH is proxied server-side with required client identity headers", async () => {

@@ -1,4 +1,5 @@
 import { isSearchResult, mergeSearchResults as mergeContractResults } from "./searchContract.js";
+import { buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy.js";
 
 export type AtsJobSource = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "recruitee" | "workable";
 export type FeedJobSource = "trudvsem" | "remoteok" | "weworkremotely" | "remotive" | "jobicy";
@@ -196,9 +197,10 @@ async function detectBackend(): Promise<boolean> {
 }
 
 async function searchBffFeed(request: SearchRequest, source: FeedJobSource): Promise<AdapterResult> {
-  const params = new URLSearchParams({ q: request.query });
-  if (source === "trudvsem") params.set("offset", "0");
-  const payload = await fetchWithTimeout<BffFeedPayload>(`/api/jobs/${source}?${params}`, {
+  const path = source === "trudvsem"
+    ? `/api/jobs/trudvsem?${new URLSearchParams({ q: request.query, offset: "0" })}`
+    : buildBffSourcePath(source, request.query);
+  const payload = await fetchWithTimeout<BffFeedPayload>(path, {
     headers: { Accept: "application/json" },
   });
   const results = (Array.isArray(payload.results) ? payload.results : [])
@@ -211,20 +213,22 @@ async function searchBffFeed(request: SearchRequest, source: FeedJobSource): Pro
       publishedAt: formatDate(item.publishedTimestamp),
     }))
     .filter((item) => isSearchResult(item))
+    .filter((item) => !isSnapshotBffSource(source)
+      || matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || [])))
     .filter((item) => source !== "trudvsem" || matchesArea(request.areaId, item.location))
     .filter((item) => source !== "trudvsem" || matchesRubSalary(request.salaryFrom, item.salary));
   return { results, nextHhPage: null, refresh: payload.meta ? { [source]: payload.meta } : undefined };
 }
 
 async function searchAts(request: SearchRequest): Promise<AdapterResult> {
-  const params = new URLSearchParams({ q: request.query });
-  const payload = await fetchWithTimeout<{ results?: BffSearchResult[] }>(`/api/jobs/ats?${params}`, {
+  const payload = await fetchWithTimeout<{ results?: BffSearchResult[] }>(buildBffSourcePath("ats", request.query), {
     headers: { Accept: "application/json" },
   });
   const results = (Array.isArray(payload.results) ? payload.results : [])
     .filter((item) => ATS_SOURCES.has(item.source as AtsJobSource))
     .map((item) => ({ ...item, source: item.source as AtsJobSource, publishedAt: formatDate(item.publishedTimestamp) }))
     .filter((item) => isSearchResult(item))
+    .filter((item) => matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || [])))
     .filter((item) => matchesArea(request.areaId, item.location));
   return { results, nextHhPage: null };
 }
