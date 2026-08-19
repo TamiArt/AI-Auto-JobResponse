@@ -1,9 +1,11 @@
-import { useEffect, useState, type ReactNode } from "react";
-import { motion, AnimatePresence } from "motion/react";
-import { Key, FileText, User, Cpu, Sparkles, Shield, ExternalLink, ChevronUp, ChevronDown, ArrowRight, Check, BookOpen, Globe, Bot, Settings, AlertCircle, BrainCircuit, CheckCircle, Copy, History, Plus, Zap } from "lucide-react";
-import type { JobSource } from "../../domain/types";
-import { JOB_SOURCES } from "../../data/jobSources";
+import { useEffect, useRef, useState, type ReactNode } from "react";
+import { AnimatePresence, motion } from "motion/react";
+import { AlertCircle, ArrowRight, Bot, BrainCircuit, Check, CheckCircle, ChevronDown, ChevronUp, Copy, Cpu, Download, ExternalLink, FileText, Globe, History, Key, Plus, Shield, Sparkles, Upload, Zap } from "lucide-react";
+import { toast } from "sonner";
+import { JOB_SOURCES, validateImportedConfig, type Config } from "../../model";
+import { PROVIDERS } from "../../providers";
 
+// ─── Guide helpers ─────────────────────────────────────────────────────────────
 function Step({ n, children }: { n: number; children: ReactNode }) {
   return (
     <div className="flex gap-3">
@@ -29,6 +31,49 @@ function ExtLink({ href, children }: { href: string; children: ReactNode }) {
   return <a href={href} target="_blank" rel="noopener noreferrer" className="text-[var(--neon-violet)] underline underline-offset-2 hover:no-underline inline-flex items-center gap-0.5">{children}<ExternalLink size={10} /></a>;
 }
 
+// ─── JSON Config Panel ─────────────────────────────────────────────────────────
+function ConfigPanel({ config, onImport }: { config: Config; onImport: (c: Config) => void }) {
+  const fileRef = useRef<HTMLInputElement>(null);
+  const handleExport = () => {
+    const blob = new Blob([JSON.stringify(config, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a");
+    a.href = url; a.download = "huntpulse_config.json"; a.click(); URL.revokeObjectURL(url);
+    toast.success("Конфиг сохранён", { description: "Файл huntpulse_config.json скачан" });
+  };
+  const handleImport = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]; if (!file) return;
+    if (!file.name.endsWith(".json")) { toast.error("Неверный формат", { description: "Выберите .json файл" }); return; }
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const result = validateImportedConfig(JSON.parse(ev.target?.result as string));
+        if (!result.valid) { toast.error("Ошибка структуры JSON", { description: result.error }); return; }
+        onImport(result.data); localStorage.setItem("huntpulse_config", JSON.stringify(result.data));
+        toast.success("Конфиг загружен", { description: "Все поля обновлены" });
+      } catch { toast.error("Не удалось прочитать файл", { description: "Файл повреждён или не является валидным JSON" }); }
+    };
+    reader.onerror = () => toast.error("Ошибка чтения файла");
+    reader.readAsText(file); if (fileRef.current) fileRef.current.value = "";
+  };
+  return (
+    <div className="rounded-xl border border-border bg-card p-4">
+      <div className="text-xs font-mono uppercase tracking-wider text-muted-foreground border-b border-border pb-2 mb-4">JSON конфигурация</div>
+      <p className="text-xs text-foreground/60 font-mono leading-relaxed mb-4">Экспортируйте настройки для резервной копии или переноса на другое устройство.</p>
+      <div className="flex gap-3">
+        <button onClick={handleExport} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl border border-border text-sm font-mono text-muted-foreground hover:text-foreground hover:border-[var(--neon-violet)]/30 transition-all min-h-[48px]">
+          <Download size={14} />Скачать
+        </button>
+        <button onClick={() => fileRef.current?.click()} className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl text-white text-sm font-semibold transition-all hover:opacity-90 min-h-[48px]"
+          style={{ background: "linear-gradient(135deg, #8B5CF6, #7c3aed)", boxShadow: "0 0 16px rgba(139,92,246,0.3)" }}>
+          <Upload size={14} />Загрузить
+        </button>
+      </div>
+      <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleImport} />
+    </div>
+  );
+}
+
+// ─── Guide Tab ─────────────────────────────────────────────────────────────────
 export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: () => void; initialSection?: string | null }) {
   const [openSection, setOpenSection] = useState<string | null>(initialSection || "gemini");
   useEffect(() => { if (initialSection) setOpenSection(initialSection); }, [initialSection]);
@@ -144,10 +189,10 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
         </div>
       </div>
     )},
-    { id: "sources", icon: <Globe size={16} />, title: "Каталог интернет-площадок", accent: "var(--neon-cyan)", content: (
+    { id: "sources", icon: <Globe size={16} />, title: "Источники вакансий — все бесплатные", accent: "var(--neon-cyan)", content: (
       <div className="space-y-4">
         <p className="text-sm text-foreground/70 leading-relaxed">
-          HuntPulse формирует поиск по {Object.keys(JOB_SOURCES).length} площадкам. Публичные API/RSS используются только там, где это разрешено; остальные площадки открываются как внешний поиск без обхода авторизации и ограничений. Автоматическая отправка в прототипе не выполняется.
+          HuntPulse собирает вакансии из 7 источников через публичные API и RSS-фиды — без платных подписок, регистраций и парсинга. Отклики отправляются только через HH.ru, остальные источники используются для <strong>обнаружения вакансий</strong>.
         </p>
 
         <div className="space-y-2">
@@ -161,13 +206,16 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
                   <div className="flex items-center gap-2 flex-wrap mb-1">
                     <span className={`text-sm font-semibold font-mono ${s.color}`}>{s.label}</span>
                     <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">{s.geo}</span>
-                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">Без платного API</span>
+                    <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-400/10 text-emerald-400 border border-emerald-400/20">Бесплатно</span>
                   </div>
-                  <p className="text-xs text-foreground/60 leading-relaxed mb-1.5">{s.description}</p>
-                  <div className="text-[10px] font-mono text-muted-foreground">
-                    <span className="mr-2">{s.access === "public-api" ? "🔌 Публичный API" : s.access === "rss" ? "📡 RSS" : "↗ Внешний поиск"}</span>
-                    <a href={s.homeUrl} target="_blank" rel="noopener noreferrer" className={`${s.color} hover:underline`}>{s.homeUrl.replace("https://", "")}</a>
-                  </div>
+                  <p className="text-xs text-foreground/60 leading-relaxed mb-1.5">{s.desc}</p>
+                  {(s.rss || s.api) && (
+                    <div className="text-[10px] font-mono text-muted-foreground">
+                      {s.rss && <span className="mr-2">📡 RSS</span>}
+                      {s.api && <span>🔌 API</span>}
+                      <a href={s.url} target="_blank" rel="noopener noreferrer" className={`ml-2 ${s.color} hover:underline`}>{s.url.replace("https://", "")}</a>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -177,10 +225,10 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
         <div className="rounded-xl border border-border bg-muted/50 p-4">
           <div className="text-[11px] font-mono uppercase tracking-wider text-muted-foreground mb-3">Как работает агрегация</div>
           <div className="space-y-2 text-xs text-foreground/65 leading-relaxed">
-            <div className="flex gap-2"><span className="text-[var(--neon-violet)] shrink-0">1.</span><span>Запрос кодируется отдельно для каждой выбранной площадки.</span></div>
-            <div className="flex gap-2"><span className="text-[var(--neon-violet)] shrink-0">2.</span><span>В демо показываются локальные карточки, а актуальная выдача открывается по прямой ссылке площадки.</span></div>
-            <div className="flex gap-2"><span className="text-[var(--neon-violet)] shrink-0">3.</span><span>Будущий backend сможет нормализовать данные только из документированных API/RSS.</span></div>
-            <div className="flex gap-2"><span className="text-[var(--neon-violet)] shrink-0">4.</span><span>Авторизация, CAPTCHA, платные функции и запреты площадок никогда не обходятся.</span></div>
+            <div className="flex gap-2"><span className="text-[var(--neon-violet)] shrink-0">1.</span><span>Все источники опрашиваются параллельно через CORS-прокси (rss2json.com, allorigins.win) или напрямую через их публичные API.</span></div>
+            <div className="flex gap-2"><span className="text-[var(--neon-violet)] shrink-0">2.</span><span>Вакансии нормализуются в единый формат и дедуплицируются по названию + компании.</span></div>
+            <div className="flex gap-2"><span className="text-[var(--neon-violet)] shrink-0">3.</span><span>Совпадения с вашими критериями (должность, зарплата, локация) фильтруются ИИ.</span></div>
+            <div className="flex gap-2"><span className="text-[var(--neon-violet)] shrink-0">4.</span><span>Отклики отправляются только на HH.ru — на вакансии, найденные там. По остальным источникам открывается ссылка для ручного отклика.</span></div>
           </div>
         </div>
       </div>
@@ -189,7 +237,7 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
       <div className="space-y-2">
         {[
           { icon: <Plus size={14} />, label: "Добавление позиции", text: "Вводите HH-токен, Resume ID, должность и параметры поиска." },
-          { icon: <Globe size={14} />, label: "Каталог площадок", text: `${Object.keys(JOB_SOURCES).length} универсальных, профессиональных, творческих и фриланс-площадок.` },
+          { icon: <Globe size={14} />, label: "Агрегация источников", text: "7 бесплатных источников — HH.ru, Habr Career, Djinni, RemoteOK и другие." },
           { icon: <CheckCircle size={14} />, label: "Дедупликация", text: "Вакансии из локальной истории автоматически пропускаются." },
           { icon: <Bot size={14} />, label: "Генерация письма", text: "AI-провайдер создаёт персонализированное письмо до 800 символов." },
           { icon: <BrainCircuit size={14} />, label: "Автопилот или контроль", text: "Выберите режим: автоматическая отправка или проверка каждого отклика." },
@@ -230,7 +278,7 @@ export function GuideTab({ onGoToSettings, initialSection }: { onGoToSettings: (
               <button className="w-full flex items-center gap-3 px-5 py-4 text-left group hover:bg-muted/30 transition-colors min-h-[56px]"
                 onClick={() => setOpenSection(openSection === sec.id ? null : sec.id)}>
                 <span style={{ color: sec.accent }} className="opacity-70 group-hover:opacity-100 transition-opacity shrink-0">{sec.icon}</span>
-                <span className="flex-1 text-sm font-semibold text-foreground flex items-center flex-wrap gap-1" style={{ fontFamily: "Oxanium, monospace" }}>{sec.title}{(sec as any).extra}</span>
+                <span className="flex-1 text-sm font-semibold text-foreground flex items-center flex-wrap gap-1" style={{ fontFamily: "Oxanium, monospace" }}>{sec.title}{"extra" in sec ? sec.extra : null}</span>
                 <span className="text-muted-foreground shrink-0">{openSection === sec.id ? <ChevronUp size={15} /> : <ChevronDown size={15} />}</span>
               </button>
               <AnimatePresence>
