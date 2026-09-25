@@ -1,4 +1,4 @@
-import type { ExperienceFilter, SalaryCurrency } from "../../domain/types";
+import type { EmploymentTypeFilter, ExperienceFilter, SalaryCurrency, WorkModeFilter } from "../../domain/types";
 import { isSearchResult, mergeSearchResults as mergeContractResults } from "./searchContract.js";
 import { buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy.js";
 
@@ -16,13 +16,13 @@ export interface NormalizedSalary {
 }
 
 export interface SearchResult {
-  id: string; title: string; company: string; salary: string; location: string; experience: string;
+  id: string; title: string; company: string; salary: string; location: string; experience: string; workMode?: WorkModeFilter; employmentType?: EmploymentTypeFilter;
   publishedAt: string; publishedTimestamp: number; source: RealJobSource; url: string; tags: string[];
   description?: string; sourceUrl?: string; normalizedSalary?: NormalizedSalary;
 }
 
 export interface SearchRequest {
-  query: string; areaId: string; salaryFrom: string; salaryTo?: string; salaryCurrency?: SalaryCurrency;
+  query: string; areaId: string; salaryFrom: string; salaryTo?: string; salaryCurrency?: SalaryCurrency; workMode?: WorkModeFilter; location?: string; employmentType?: EmploymentTypeFilter;
   experience: ExperienceFilter; sources: RealJobSource[]; telegramChannels?: string[]; page?: number;
 }
 
@@ -63,6 +63,29 @@ function normalizeSalary(salary: string): NormalizedSalary {
   return { min: numbers.length > 1 ? Math.min(...numbers) : numbers[0] ?? null, max: numbers.length > 1 ? Math.max(...numbers) : numbers[0] ?? null, currency, period, originalText };
 }
 
+function matchesWorkMode(request: SearchRequest, item: SearchResult): boolean {
+  if (!request.workMode || request.workMode === "any") return true;
+  const text = normalizeText([item.location, item.title, item.description, ...(item.tags || [])].join(" "));
+  if (request.workMode === "remote") return /remote|удален|удалён|дистанцион/.test(text);
+  if (request.workMode === "hybrid") return /hybrid|гибрид/.test(text);
+  return !/remote|удален|удалён|дистанцион|hybrid|гибрид/.test(text);
+}
+
+function matchesLocation(request: SearchRequest, item: SearchResult): boolean {
+  if (!request.location?.trim()) return true;
+  const wanted = normalizeText(request.location);
+  return normalizeText(item.location).includes(wanted) || normalizeText([item.title, item.description].join(" ")).includes(wanted);
+}
+
+function matchesEmploymentType(request: SearchRequest, item: SearchResult): boolean {
+  if (!request.employmentType || request.employmentType === "any") return true;
+  const text = normalizeText([item.title, item.description, ...(item.tags || [])].join(" "));
+  if (request.employmentType === "internship") return /intern|стаж|trainee|практик/.test(text);
+  if (request.employmentType === "partTime") return /part.?time|частич|неполн/.test(text);
+  if (request.employmentType === "contract") return /contract|контракт|проектн|freelance|фриланс/.test(text);
+  return !/intern|стаж|trainee|практик|part.?time|частич|неполн|contract|контракт|проектн|freelance|фриланс/.test(text);
+}
+
 function matchesSalary(request: SearchRequest, salary: string, normalized?: NormalizedSalary): boolean {
   const from = Number(request.salaryFrom || 0);
   const to = Number(request.salaryTo || 0);
@@ -94,7 +117,10 @@ function normalizeBffItems(items: BffSearchResult[], source: RealJobSource, requ
     .filter((item) => isSearchResult(item))
     .filter((item) => matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || [])))
     .filter((item) => matchesExperience(request.experience, item.experience))
-    .filter((item) => matchesSalary(request, item.salary, item.normalizedSalary));
+    .filter((item) => matchesSalary(request, item.salary, item.normalizedSalary))
+    .filter((item) => matchesWorkMode(request, item))
+    .filter((item) => matchesLocation(request, item))
+    .filter((item) => matchesEmploymentType(request, item));
 }
 
 async function searchBffFeed(request: SearchRequest, source: FeedJobSource): Promise<AdapterResult> {
