@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type JSX } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { BookOpen, BriefcaseBusiness, Bot, Moon, Settings, Sun, Target, UserRound, Zap } from "lucide-react";
+import { BookOpen, BriefcaseBusiness, Bot, Moon, Settings, Sun, Target, UserRound, Zap, Sparkles } from "lucide-react";
 import { Toaster } from "sonner";
 import type { CareerProfile, Config, ExperienceFilter, Theme } from "./domain/types";
 import { AREA_OPTIONS } from "./data/catalog";
@@ -9,11 +9,12 @@ import { GuideTab } from "./features/guide/GuideTab";
 import { ConfigPanel } from "./features/settings/ConfigPanel";
 import { CareerPanel } from "./features/career/CareerPanel";
 import { AiPanel } from "./features/ai/AiPanel";
+import { MatchingPanel } from "./features/matching/MatchingPanel";
 import { Field } from "./shared/components";
 import { loadConfig, persistConfig } from "./lib/storage";
 import { EMPTY_CAREER_PROFILE, loadCareerProfile, persistCareerProfile } from "./lib/careerStorage";
 
-type ActiveTab = "search" | "career" | "ai" | "guide" | "settings";
+type ActiveTab = "search" | "matching" | "career" | "ai" | "guide" | "settings";
 
 const EXPERIENCE_OPTIONS: Array<{ value: ExperienceFilter; label: string }> = [
   { value: "any", label: "Любой опыт" },
@@ -43,6 +44,7 @@ export default function App() {
   const openHelp = (sectionId: string) => { setGuideSection(sectionId); setTab("guide"); };
   const navItems: { id: ActiveTab; label: string; icon: JSX.Element }[] = [
     { id: "search", label: "Поиск", icon: <Target size={16} /> },
+    { id: "matching", label: "Подбор", icon: <Sparkles size={16} /> },
     { id: "career", label: "Career Graph", icon: <UserRound size={16} /> },
     { id: "ai", label: "AI Studio", icon: <Bot size={16} /> },
     { id: "guide", label: "Руководство", icon: <BookOpen size={16} /> },
@@ -64,6 +66,7 @@ export default function App() {
       <main className="relative z-10 flex-1 max-w-6xl mx-auto w-full px-4 py-6">
         <AnimatePresence mode="wait">
           {tab === "search" && <motion.div key="search" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><SearchPanel config={config} /></motion.div>}
+          {tab === "matching" && <motion.div key="matching" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><MatchingPanel profile={career} config={config} /></motion.div>}
           {tab === "career" && <motion.div key="career" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><CareerPanel profile={career} onChange={saveCareer} /></motion.div>}
           {tab === "ai" && <motion.div key="ai" initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}><AiPanel profile={career} /></motion.div>}
           {tab === "guide" && <GuideTab key="guide" onGoToSettings={() => setTab("settings")} initialSection={guideSection} />}
