@@ -35,7 +35,7 @@ export interface SearchResponse {
 interface HhVacancy { id: string; name: string; alternate_url: string; published_at?: string; employer?: { name?: string }; salary?: { from?: number; to?: number; currency?: string } | null; area?: { name?: string }; experience?: { name?: string }; schedule?: { name?: string }; employment?: { name?: string }; professional_roles?: Array<{ name?: string }>; }
 interface HhPayload { items: HhVacancy[]; page: number; pages: number; unavailable?: string; }
 interface ArbeitnowVacancy { slug: string; title: string; company_name?: string; description?: string; tags?: string[]; location?: string; remote?: boolean; created_at?: number; url: string; }
-interface BffSearchResult { id: string; title: string; company: string; salary: string; location: string; experience: string; publishedTimestamp: number; source?: string; url: string; tags: string[]; description?: string; sourceUrl?: string; viewerPath?: string; }
+interface BffSearchResult { id: string; title: string; company: string; salary: string; location: string; experience: string; publishedTimestamp: number; source?: string; url: string; tags: string[]; description?: string; sourceUrl?: string; viewerPath?: string; workMode?: WorkModeFilter; employmentType?: EmploymentTypeFilter; }
 interface BffFeedPayload { results?: BffSearchResult[]; meta?: SourceRefreshMeta; }
 interface AdapterResult { results: SearchResult[]; nextHhPage: number | null; refresh?: Partial<Record<FeedJobSource, SourceRefreshMeta>>; }
 
@@ -152,10 +152,8 @@ async function searchBffFeed(request: SearchRequest, source: FeedJobSource): Pro
   const results = (Array.isArray(payload.results) ? payload.results : []).map((item) => ({ ...item, url: source === "trudvsem" && item.viewerPath ? new URL(item.viewerPath, window.location.origin).toString() : item.url, source, publishedAt: formatDate(item.publishedTimestamp) }))
     .filter((item) => isSearchResult(item))
     .filter((item) => !isSnapshotBffSource(source) || matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || [])))
-    .filter((item) => source !== "trudvsem" || matchesArea(request.areaId, item.location))
-    .map((item) => ({ ...item, normalizedSalary: normalizeSalary(item.salary) }))
-    .filter((item) => matchesExperience(request.experience, item.experience))
-    .filter((item) => matchesSalary(request, item.salary, item.normalizedSalary));
+    .map((item) => ({ ...item, normalizedSalary: normalizeSalary(item.salary), workMode: item.workMode || inferWorkMode(item), employmentType: item.employmentType || inferEmploymentType(item) }))
+    .filter((item) => applySearchFilters(request, item));
   return { results, nextHhPage: null, refresh: payload.meta ? { [source]: payload.meta } : undefined };
 }
 
@@ -183,7 +181,7 @@ async function searchHh(request: SearchRequest): Promise<AdapterResult> {
 
 async function searchArbeitnow(request: SearchRequest): Promise<AdapterResult> {
   const payload = await fetchWithTimeout<{ data: ArbeitnowVacancy[] }>("https://www.arbeitnow.com/api/job-board-api", { headers: { Accept: "application/json" } });
-  const results = payload.data.filter((item) => matchesQuery(request.query, item.title, item.company_name, stripHtml(item.description), ...(item.tags || []))).map((item) => { const timestamp = item.created_at ? item.created_at * 1000 : 0; return { id: `arbeitnow-${item.slug}`, title: item.title, company: item.company_name || "Компания не указана", salary: "Зарплата не указана", location: item.location || (item.remote ? "Удалённо" : "Локация не указана"), experience: "Опыт не указан", publishedAt: formatDate(timestamp), publishedTimestamp: timestamp, source: "arbeitnow" as const, url: item.url, tags: (item.tags || []).slice(0, 5), normalizedSalary: normalizeSalary("Зарплата не указана") }; }).filter((item) => isSearchResult(item)).map((item) => ({ ...item, workMode: item.workMode || inferWorkMode(item), employmentType: item.employmentType || inferEmploymentType(item) })).filter((item) => applySearchFilters(request, item));
+  const results = payload.data.filter((item) => matchesQuery(request.query, item.title, item.company_name, stripHtml(item.description), ...(item.tags || []))).map((item) => { const timestamp = item.created_at ? item.created_at * 1000 : 0; return { id: `arbeitnow-${item.slug}`, title: item.title, company: item.company_name || "Компания не указана", salary: "Зарплата не указана", location: item.location || (item.remote ? "Удалённо" : "Локация не указана"), experience: "Опыт не указан", workMode: item.remote ? "remote" as const : "onsite" as const, employmentType: "fullTime" as const, publishedAt: formatDate(timestamp), publishedTimestamp: timestamp, source: "arbeitnow" as const, url: item.url, tags: (item.tags || []).slice(0, 5), normalizedSalary: normalizeSalary("Зарплата не указана") }; }).filter((item) => isSearchResult(item)).map((item) => ({ ...item, workMode: item.workMode || inferWorkMode(item), employmentType: item.employmentType || inferEmploymentType(item) })).filter((item) => applySearchFilters(request, item));
   return { results, nextHhPage: null };
 }
 
