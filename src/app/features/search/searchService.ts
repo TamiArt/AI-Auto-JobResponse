@@ -42,7 +42,7 @@ interface AdapterResult { results: SearchResult[]; nextHhPage: number | null; re
 const REQUEST_TIMEOUT_MS = 12_000;
 const CAPABILITY_TIMEOUT_MS = 1_500;
 const ATS_SOURCES = new Set<AtsJobSource>(["greenhouse", "lever", "ashby", "smartrecruiters", "recruitee", "workable"]);
-const AUTOMATIC_FIRST_PAGE_SOURCES: AdapterSource[] = ["trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats"];
+const AUTOMATIC_FIRST_PAGE_SOURCES: AdapterSource[] = ["trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
 const BACKEND_REQUIRED_SOURCES = new Set<AdapterSource>(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats", "telegram"]);
 let backendCapability: Promise<boolean> | null = null;
 
