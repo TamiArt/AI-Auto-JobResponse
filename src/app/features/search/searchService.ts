@@ -56,7 +56,7 @@ function normalizeSalary(salary: string): NormalizedSalary {
   const originalText = salary || "Зарплата не указана";
   const text = normalizeText(originalText);
   const numbers = Array.from(text.matchAll(/\d[\d\s.,]*/g))
-    .map((match) => Number(match[0].replace(/\s/g, "").replace(/,(?=\d{3}(?:\\D|$))/g, "").replace(",", ".")))
+    .map((match) => Number(match[0].replace(/\s/g, "").replace(/,(?=\d{3}(?:\D|$))/g, "").replace(",", ".")))
     .filter(Number.isFinite);
   const currency = /\b(rub|руб|₽|rur)\b/.test(text) ? "RUB" : /\b(usd|долл|\$)\b/.test(text) ? "USD" : /\b(eur|евро|€)\b/.test(text) ? "EUR" : /\b(gbp|фунт|£)\b/.test(text) ? "GBP" : null;
   const period = /час|hour|hourly|в час/.test(text) ? "hour" : /год|year|annual|annually|в год/.test(text) ? "year" : "month";
@@ -104,7 +104,9 @@ async function searchBffFeed(request: SearchRequest, source: FeedJobSource): Pro
     .filter((item) => isSearchResult(item))
     .filter((item) => !isSnapshotBffSource(source) || matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || [])))
     .filter((item) => source !== "trudvsem" || matchesArea(request.areaId, item.location))
-        .filter((item) => matchesExperience(request.experience, item.experience));
+    .map((item) => ({ ...item, normalizedSalary: normalizeSalary(item.salary) }))
+    .filter((item) => matchesExperience(request.experience, item.experience))
+    .filter((item) => matchesSalary(request, item.salary, item.normalizedSalary));
   return { results, nextHhPage: null, refresh: payload.meta ? { [source]: payload.meta } : undefined };
 }
 
@@ -118,14 +120,14 @@ async function searchTelegram(request: SearchRequest): Promise<AdapterResult> {
 
 async function searchAts(request: SearchRequest): Promise<AdapterResult> {
   const payload = await fetchWithTimeout<{ results?: BffSearchResult[] }>(buildBffSourcePath("ats", request.query), { headers: { Accept: "application/json" } });
-  const results = (Array.isArray(payload.results) ? payload.results : []).filter((item) => ATS_SOURCES.has(item.source as AtsJobSource)).map((item) => ({ ...item, source: item.source as AtsJobSource, publishedAt: formatDate(item.publishedTimestamp) })).filter((item) => isSearchResult(item)).filter((item) => matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || []))).filter((item) => matchesArea(request.areaId, item.location)).filter((item) => matchesExperience(request.experience, item.experience))
+  const results = (Array.isArray(payload.results) ? payload.results : []).filter((item) => ATS_SOURCES.has(item.source as AtsJobSource)).map((item) => ({ ...item, source: item.source as AtsJobSource, publishedAt: formatDate(item.publishedTimestamp), normalizedSalary: normalizeSalary(item.salary) })).filter((item) => isSearchResult(item)).filter((item) => matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || []))).filter((item) => matchesArea(request.areaId, item.location)).filter((item) => matchesExperience(request.experience, item.experience))
     .filter((item) => matchesSalary(request, item.salary, item.normalizedSalary));
   return { results, nextHhPage: null };
 }
 
 async function searchHh(request: SearchRequest): Promise<AdapterResult> {
   const page = Math.max(0, request.page ?? 0); const params = new URLSearchParams({ q: request.query, area: request.areaId, page: String(page) });
-  if (request.salaryFrom) params.set("salary", request.salaryFrom); if (request.experience !== "any") params.set("experience", request.experience);
+  if (request.salaryFrom) params.set("salary", request.salaryFrom); if (request.salaryCurrency) params.set("currency", request.salaryCurrency); if (request.experience !== "any") params.set("experience", request.experience);
   const payload = await fetchWithTimeout<HhPayload>(`/api/jobs/hh?${params}`, { headers: { Accept: "application/json" } }); if (payload.unavailable) throw new Error(`HH unavailable: ${payload.unavailable}`);
   const results = (Array.isArray(payload.items) ? payload.items : []).map((item) => { const timestamp = item.published_at ? Date.parse(item.published_at) : 0; const tags = [item.experience?.name, item.schedule?.name, item.employment?.name, ...(item.professional_roles || []).map((role) => role.name)].filter((value): value is string => Boolean(value)); return { id: `hh-${item.id}`, title: item.name, company: item.employer?.name || "Компания не указана", salary: formatSalary(item.salary), location: item.area?.name || "Локация не указана", experience: item.experience?.name || "Опыт не указан", publishedAt: formatDate(timestamp), publishedTimestamp: timestamp, source: "hh" as const, url: item.alternate_url, tags: Array.from(new Set(tags)).slice(0, 5), normalizedSalary: normalizeSalary(formatSalary(item.salary)) }; }).filter((item) => isSearchResult(item)).filter((item) => matchesExperience(request.experience, item.experience)).filter((item) => matchesSalary(request, item.salary, item.normalizedSalary));
   return { results, nextHhPage: payload.page + 1 < payload.pages ? payload.page + 1 : null };
