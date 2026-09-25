@@ -17,7 +17,7 @@ export function validateHhRequest(searchParams) {
   if (salaryFrom && (!/^\d+$/.test(salaryFrom) || Number(salaryFrom) > 100_000_000)) {
     return { ok: false, status: 400, error: "invalid_parameters" };
   }
-  return { ok: true, query, areaId, salaryFrom, experience, page };
+  return {\n    ok: true,\n    query,\n    areaId,\n    salaryFrom,\n    ...(experience ? { experience } : {}),\n    page,\n  };
 }
 
 export function buildHhUrl(validation) {
