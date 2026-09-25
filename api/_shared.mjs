@@ -144,7 +144,8 @@ async function loadPublicSnapshot(source) {
   } else {
     throw new Error("unsupported_source");
   }
-  return { results: filterPublicFeedResults(jobs, ""), meta: feedMeta(source) };
+  const filtered = filterPublicFeedResults(jobs, "");
+  return Object.assign({ results: filtered }, { data: filtered, meta: feedMeta(source) });
 }
 
 async function loadTrudvsem(url) {
