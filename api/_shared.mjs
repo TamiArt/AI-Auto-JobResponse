@@ -201,6 +201,11 @@ export async function handleSource(source, request, response) {
       const result = await loadTrudvsem(url);
       return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.trudvsem : 0);
     }
+    if (source === "arbeitnow") {
+      const body = await loadPublicSnapshot(source);
+      const query = url.searchParams.get("q") || "";
+      return sendJson(response, 200, { ...body, results: filterPublicFeedResults(body.results, query) }, CACHE_SECONDS[source]);
+    }
     if (!SNAPSHOT_SOURCE_SET.has(source)) return sendJson(response, 404, { error: "unsupported_source" });
     if (rejectSnapshotQuery(url, response)) return;
     const body = source === "ats" ? await loadAtsSnapshot() : await loadPublicSnapshot(source);
