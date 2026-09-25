@@ -16,6 +16,7 @@ import type { SearchResult } from "./features/search/searchService";
 import { Field } from "./shared/components";
 import { loadConfig, persistConfig } from "./lib/storage";
 import { EMPTY_CAREER_PROFILE, loadCareerProfile, persistCareerProfile } from "./lib/careerStorage";
+import { initTelegramMiniApp } from "./lib/telegram";
 
 type ActiveTab = "search" | "matching" | "application" | "career" | "ai" | "guide" | "settings";
 
