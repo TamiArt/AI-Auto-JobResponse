@@ -18,10 +18,11 @@ const API_URLS = {
   weworkremotely: "https://weworkremotely.com/remote-jobs.rss",
   remotive: "https://remotive.com/api/remote-jobs",
   jobicy: "https://jobicy.com/api/v2/remote-jobs?count=100",
+  arbeitnow: "https://www.arbeitnow.com/api/job-board-api",
 };
 
-export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats"];
-export const SNAPSHOT_SOURCES = ["remoteok", "weworkremotely", "remotive", "jobicy", "ats"];
+export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
+export const SNAPSHOT_SOURCES = ["remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
 const SNAPSHOT_SOURCE_SET = new Set(SNAPSHOT_SOURCES);
 export const CACHE_SECONDS = {
   hh: 300,
@@ -31,6 +32,7 @@ export const CACHE_SECONDS = {
   ats: 1800,
   jobicy: 3600,
   remotive: 21600,
+  arbeitnow: 1800,
 };
 
 function applyHeaders(response) {
@@ -126,6 +128,19 @@ async function loadPublicSnapshot(source) {
     jobs = normalizeRemotivePayload(await fetchWithTimeout(API_URLS.remotive));
   } else if (source === "jobicy") {
     jobs = normalizeJobicyPayload(await fetchWithTimeout(API_URLS.jobicy));
+  } else if (source === "arbeitnow") {
+    const payload = await fetchWithTimeout(API_URLS.arbeitnow, { headers: { "User-Agent": "JOBOS-AI/1.0" } });
+    jobs = Array.isArray(payload?.data) ? payload.data.map((job) => ({
+      id: `arbeitnow-${String(job?.slug || job?.url || "")}`,
+      title: String(job?.title || "").trim(),
+      company: String(job?.company_name || "Компания не указана").trim(),
+      salary: "Зарплата не указана",
+      location: String(job?.location || (job?.remote ? "Удалённо" : "Локация не указана")).trim(),
+      experience: "Опыт не указан",
+      publishedTimestamp: typeof job?.created_at === "number" ? job.created_at * 1000 : 0,
+      url: String(job?.url || "").trim(),
+      tags: Array.isArray(job?.tags) ? job.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 5) : [],
+    })).filter((job) => job.title && job.url.startsWith("http")) : [];
   } else {
     throw new Error("unsupported_source");
   }
