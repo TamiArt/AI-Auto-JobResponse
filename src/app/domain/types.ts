@@ -8,10 +8,14 @@ export type JobSource =
 
 export type ExperienceFilter = "any" | "noExperience" | "between1And3" | "between3And6" | "moreThan6";
 
+export type SalaryCurrency = "RUB" | "USD" | "EUR" | "GBP";
+
 export interface Config {
   jobTitle: string;
   areaId: string;
   salaryFrom: string;
+  salaryTo?: string;
+  salaryCurrency?: SalaryCurrency;
   experience: ExperienceFilter;
   telegramChannels: string[];
 }
