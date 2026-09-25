@@ -43,6 +43,7 @@ export default function App() {
   const [selectedJob, setSelectedJob] = useState<SearchResult | null>(loadSelectedApplication);
 
   useEffect(() => { document.documentElement.classList.toggle("dark", theme === "dark"); }, [theme]);
+  useEffect(() => { initTelegramMiniApp(); }, []);
   const saveConfig = useCallback((next: Config) => { setConfig(next); persistConfig(next); }, []);
   const saveCareer = useCallback((next: CareerProfile) => { setCareer(next); persistCareerProfile(next); }, []);
   const openApplication = useCallback((job: SearchResult) => { setSelectedJob(job); saveSelectedApplication(job); setTab("application"); }, []);
