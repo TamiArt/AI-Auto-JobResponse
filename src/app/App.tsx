@@ -30,7 +30,7 @@ function AppIcon({ className = "h-7 w-7" }: { className?: string }) {
 }
 
 export default function App() {
-  const [theme, setTheme] = useState<Theme>("dark");
+  const [theme, setTheme] = useState<Theme>("light");
   const [tab, setTab] = useState<ActiveTab>("search");
   const [guideSection, setGuideSection] = useState<string | null>(null);
   const [config, setConfig] = useState<Config>(loadConfig);
@@ -52,8 +52,7 @@ export default function App() {
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col" style={{ fontFamily: "Inter, sans-serif" }}>
       <Toaster position="top-right" theme={theme} richColors toastOptions={{ style: { fontFamily: "JetBrains Mono, monospace", fontSize: "13px" } }} />
-      <div className="fixed inset-0 pointer-events-none opacity-[0.025]" style={{ backgroundImage: "linear-gradient(var(--neon-violet) 1px, transparent 1px), linear-gradient(90deg, var(--neon-violet) 1px, transparent 1px)", backgroundSize: "40px 40px" }} />
-      <header className="relative z-10 border-b border-border bg-card/80 backdrop-blur-sm sticky top-0">
+      <header className="relative z-10 border-b border-border bg-card/95 backdrop-blur-sm sticky top-0 shadow-sm">
         <div className="max-w-6xl mx-auto px-4 h-14 flex items-center justify-between">
           <button type="button" onClick={() => setTab("search")} className="flex items-center gap-2.5"><AppIcon /><span className="font-bold tracking-tight" style={{ fontFamily: "Oxanium, monospace", fontSize: "1.1rem" }}>JOBOS<span className="text-[var(--neon-violet)]">_</span>AI</span></button>
           <nav className="hidden md:flex items-center gap-1" aria-label="Основная навигация">{navItems.map((item) => <button key={item.id} onClick={() => setTab(item.id)} className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-mono transition-all ${tab === item.id ? "bg-[var(--neon-violet)]/15 text-[var(--neon-violet)] border border-[var(--neon-violet)]/30" : "text-muted-foreground hover:text-foreground hover:bg-muted"}`}>{item.icon}{item.label}</button>)}</nav>
