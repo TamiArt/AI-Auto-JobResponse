@@ -58,8 +58,8 @@ function normalizeSalary(salary: string): NormalizedSalary {
   const numbers = Array.from(text.matchAll(/\d[\d\s.,]*/g))
     .map((match) => Number(match[0].replace(/\s/g, "").replace(/,(?=\d{3}(?:\D|$))/g, "").replace(",", ".")))
     .filter(Number.isFinite);
-  const currency = /\b(rub|руб|₽|rur)\b/.test(text) ? "RUB" : /\b(usd|долл|\$)\b/.test(text) ? "USD" : /\b(eur|евро|€)\b/.test(text) ? "EUR" : /\b(gbp|фунт|£)\b/.test(text) ? "GBP" : null;
-  const period = /час|hour|hourly|в час/.test(text) ? "hour" : /год|year|annual|annually|в год/.test(text) ? "year" : "month";
+  const currency = /\b(rub|руб|₽|rur)\b/.test(text) ? "RUB" : /\b(usd|долл)\b|\$/.test(text) ? "USD" : /\b(eur|евро)\b|€/.test(text) ? "EUR" : /\b(gbp|фунт)\b|£/.test(text) ? "GBP" : null;
+  const period = /час|hour|hourly|в час/.test(text) ? "hour" : /год|year|annual|annually|в год/.test(text) ? "year" : /месяц|month|monthly|в месяц/.test(text) ? "month" : "unknown";
   return { min: numbers.length > 1 ? Math.min(...numbers) : numbers[0] ?? null, max: numbers.length > 1 ? Math.max(...numbers) : numbers[0] ?? null, currency, period, originalText };
 }
 
