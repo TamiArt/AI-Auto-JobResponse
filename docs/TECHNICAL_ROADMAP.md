@@ -59,12 +59,17 @@ Telegram является отдельным источником ваканси
 
 Следующие функции являются backlog, а не мусором. Если UI/модель уже содержит их элементы, до реализации показывать нейтральную заглушку «Будет реализовано позже» и не запрашивать секреты пользователя без необходимости.
 
-### AI-помощник отклика
-- [ ] Подготовка черновика сопроводительного письма по вакансии и профилю.
-- [ ] Поддержка AI providers (Gemini / Groq / OpenRouter или актуальные бесплатные/опциональные варианты после отдельного security review).
-- [ ] Безопасное хранение/использование API key — решение принять до включения функции.
-- [ ] Анализ соответствия вакансии профилю.
-- [ ] Никакой автоматической отправки отклика без отдельного проектирования и явного действия пользователя.
+### AI / Career Intelligence
+- [x] Разделить «Поиск вакансий» и отдельный режим «Подбор вакансий» по Career Profile.
+- [x] Зафиксировать AI inference workflow: факт пользователя → AI-предположение → пользователь подтверждает/изменяет/удаляет → только подтверждённое попадает в Career Profile.
+- [x] Запретить AI придумывать образование и сертификаты.
+- [ ] Реализовать отдельный режим «Подбор вакансий»: анализ Career Profile против выбранного набора вакансий без изменения обычной поисковой выдачи.
+- [ ] Реализовать универсальный «Открыть в AI» с провайдерами Gemini / ChatGPT / Qwen как внешними чатами.
+- [ ] Реализовать Gemini API через собственный API key пользователя как основной API-режим; не считать ChatGPT Free автоматически бесплатным API.
+- [ ] AI Workspace: принять ответ внешнего AI обратно в JOBOS, определить/выбрать тип результата, привязать его к вакансии и сохранить в Application Studio.
+- [ ] Структурированный повторный AI-анализ импортированного ответа — только через выбранного AI provider.
+- [ ] Preview перед любым откликом и обязательное явное подтверждение пользователя перед отправкой.
+- [ ] Не вводить обязательный платный AI API и не разворачивать локальную LLM.
 
 ### HH account integration
 - [ ] HH OAuth/token integration.
@@ -99,8 +104,9 @@ Telegram является отдельным источником ваканси
 
 - [ ] Фильтр источников в результирующей выдаче.
 - [ ] Remote / hybrid / onsite filter.
+- [ ] Employment type filter.
+- [x] Salary range filter with currency-aware normalization (from/to; unknown salary excluded when salary filter is active).
 - [ ] Фильтр по дате публикации.
-- [ ] Корректный salary filter с валютой.
 - [ ] Сортировка по дате/релевантности/зарплате.
 - [ ] Пагинация/подгрузка для источников, которые её поддерживают.
 - [ ] Карточка/панель деталей вакансии без потери оригинальной ссылки.
@@ -131,10 +137,11 @@ Telegram является отдельным источником ваканси
 
 ## Порядок реализации
 
-1. Production hardening и cache correctness.
-2. Telegram public-channel fallback + Search correctness / source capabilities / salary-location model.
-3. Search UX.
-4. Job application tracker.
-5. Saved searches и monitoring.
-6. Telegram authorized MTProto prototype on Cloudflare + опциональная AI-помощь.
-7. Только затем — расширение числа источников и автоматизация отклика.
+1. Search correctness: salary/location/work-mode/employment-type normalized contracts.
+2. Search UX: salary + work mode + employment type + job details without profile-based filtering.
+3. Separate «Подбор вакансий» mode using Career Profile and AI analysis.
+4. Application Studio + universal «Открыть в AI» + AI Workspace import/processing.
+5. Preview → explicit user approval → apply flow + application tracker.
+6. Saved searches and monitoring.
+7. Telegram authorized MTProto prototype.
+8. Only after the above: expand sources and permitted application automation.
