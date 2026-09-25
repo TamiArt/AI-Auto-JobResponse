@@ -3,7 +3,7 @@ import { CheckCircle2, ClipboardCheck, ExternalLink, FileText, MessageSquare, Se
 import type { AiTask, CareerProfile } from "../../domain/types";
 import { buildAiPackage, buildPrompt } from "../../lib/aiPackage";
 import type { SearchResult } from "../search/searchService";
-import { saveApplication } from "./applicationStorage";
+import { loadApplications, saveApplication, type ApplicationRecord } from "./applicationStorage";
 
 type StudioStep = "prepare" | "preview" | "confirm" | "tracked";
 type MaterialKind = "cover-letter" | "recruiter-message" | "questionnaire" | "tech-answer";
@@ -67,6 +67,7 @@ export function ApplicationStudio({ job, profile, onClearJob }: Props) {
   const [provider, setProvider] = useState<ExternalProvider>("gemini");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [records, setRecords] = useState<ApplicationRecord[]>(loadApplications);
 
   const previewText = useMemo(() => material.trim(), [material]);
   const prompt = useMemo(() => job ? buildApplicationPrompt(kind, job, profile) : "", [kind, job, profile]);
@@ -85,6 +86,7 @@ export function ApplicationStudio({ job, profile, onClearJob }: Props) {
   const saveRecord = (nextStatus: "draft" | "ready" | "opened", nextMaterial = material) => {
     if (!nextMaterial.trim()) return;
     saveApplication({ id: `${job.id}:${kind}`, jobId: job.id, job, materialKind: kind, material: nextMaterial, status: nextStatus, updatedAt: new Date().toISOString() });
+    setRecords(loadApplications());
   };
 
   const prepareFallback = () => {
@@ -178,6 +180,11 @@ export function ApplicationStudio({ job, profile, onClearJob }: Props) {
 
         {error && <div className="rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm">{error}</div>}
       </section>
+
+      {records.length > 0 && <section className="rounded-[1.25rem] border border-border bg-card p-5 shadow-[var(--shadow-card)]">
+        <div className="flex items-center gap-2"><ClipboardCheck size={16} className="text-primary" /><h2 className="font-semibold">История откликов</h2><span className="text-xs text-muted-foreground">· в этом браузере</span></div>
+        <div className="mt-4 space-y-2">{records.slice(0, 8).map((record) => <div key={record.id} className="flex items-center justify-between gap-3 rounded-xl border border-border p-3"><div className="min-w-0"><div className="text-sm font-medium truncate">{record.job.title}</div><div className="text-xs text-muted-foreground">{record.job.company} · {MATERIAL_LABELS[record.materialKind]}</div></div><span className="shrink-0 rounded-full bg-secondary px-2.5 py-1 text-[10px] font-mono">{record.status === "opened" ? "Открыта" : record.status === "ready" ? "Готова" : "Черновик"}</span></div>)}</div>
+      </section>}
     </div>
   );
 }
