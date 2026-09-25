@@ -65,10 +65,18 @@ function normalizeSalary(salary: string): NormalizedSalary {
 
 function matchesWorkMode(request: SearchRequest, item: SearchResult): boolean {
   if (!request.workMode || request.workMode === "any") return true;
+  if (item.workMode && item.workMode !== "any") return item.workMode === request.workMode;
   const text = normalizeText([item.location, item.title, item.description, ...(item.tags || [])].join(" "));
-  if (request.workMode === "remote") return /remote|удален|удалён|дистанцион/.test(text);
+  if (request.workMode === "remote") return /remote|удален|удалён|дистанцион|work from home|wfh/.test(text);
   if (request.workMode === "hybrid") return /hybrid|гибрид/.test(text);
-  return !/remote|удален|удалён|дистанцион|hybrid|гибрид/.test(text);
+  return !/remote|удален|удалён|дистанцион|work from home|wfh|hybrid|гибрид/.test(text);
+}
+
+function inferWorkMode(item: Pick<SearchResult, "location" | "title" | "description" | "tags">): WorkModeFilter {
+  const text = normalizeText([item.location, item.title, item.description, ...(item.tags || [])].join(" "));
+  if (/hybrid|гибрид/.test(text)) return "hybrid";
+  if (/remote|удален|удалён|дистанцион|work from home|wfh/.test(text)) return "remote";
+  return "onsite";
 }
 
 function matchesLocation(request: SearchRequest, item: SearchResult): boolean {
@@ -79,11 +87,30 @@ function matchesLocation(request: SearchRequest, item: SearchResult): boolean {
 
 function matchesEmploymentType(request: SearchRequest, item: SearchResult): boolean {
   if (!request.employmentType || request.employmentType === "any") return true;
+  if (item.employmentType && item.employmentType !== "any") return item.employmentType === request.employmentType;
   const text = normalizeText([item.title, item.description, ...(item.tags || [])].join(" "));
   if (request.employmentType === "internship") return /intern|стаж|trainee|практик/.test(text);
   if (request.employmentType === "partTime") return /part.?time|частич|неполн/.test(text);
   if (request.employmentType === "contract") return /contract|контракт|проектн|freelance|фриланс/.test(text);
   return !/intern|стаж|trainee|практик|part.?time|частич|неполн|contract|контракт|проектн|freelance|фриланс/.test(text);
+}
+
+function inferEmploymentType(item: Pick<SearchResult, "title" | "description" | "tags">): EmploymentTypeFilter {
+  const text = normalizeText([item.title, item.description, ...(item.tags || [])].join(" "));
+  if (/intern|стаж|trainee|практик/.test(text)) return "internship";
+  if (/part.?time|частич|неполн/.test(text)) return "partTime";
+  if (/contract|контракт|проектн|freelance|фриланс/.test(text)) return "contract";
+  return "fullTime";
+}
+
+function applySearchFilters(request: SearchRequest, item: SearchResult): boolean {
+  return matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || []))
+    && matchesArea(request.areaId, item.location)
+    && matchesExperience(request.experience, item.experience)
+    && matchesSalary(request, item.salary, item.normalizedSalary)
+    && matchesWorkMode(request, item)
+    && matchesLocation(request, item)
+    && matchesEmploymentType(request, item);
 }
 
 function matchesSalary(request: SearchRequest, salary: string, normalized?: NormalizedSalary): boolean {
@@ -115,12 +142,8 @@ async function detectBackend(): Promise<boolean> { if (backendCapability) return
 function normalizeBffItems(items: BffSearchResult[], source: RealJobSource, request: SearchRequest): SearchResult[] {
   return items.map((item) => ({ ...item, source, publishedAt: formatDate(item.publishedTimestamp), normalizedSalary: normalizeSalary(item.salary) }))
     .filter((item) => isSearchResult(item))
-    .filter((item) => matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || [])))
-    .filter((item) => matchesExperience(request.experience, item.experience))
-    .filter((item) => matchesSalary(request, item.salary, item.normalizedSalary))
-    .filter((item) => matchesWorkMode(request, item))
-    .filter((item) => matchesLocation(request, item))
-    .filter((item) => matchesEmploymentType(request, item));
+    .map((item) => ({ ...item, workMode: item.workMode || inferWorkMode(item), employmentType: item.employmentType || inferEmploymentType(item) }))
+    .filter((item) => applySearchFilters(request, item));
 }
 
 async function searchBffFeed(request: SearchRequest, source: FeedJobSource): Promise<AdapterResult> {
@@ -146,8 +169,7 @@ async function searchTelegram(request: SearchRequest): Promise<AdapterResult> {
 
 async function searchAts(request: SearchRequest): Promise<AdapterResult> {
   const payload = await fetchWithTimeout<{ results?: BffSearchResult[] }>(buildBffSourcePath("ats", request.query), { headers: { Accept: "application/json" } });
-  const results = (Array.isArray(payload.results) ? payload.results : []).filter((item) => ATS_SOURCES.has(item.source as AtsJobSource)).map((item) => ({ ...item, source: item.source as AtsJobSource, publishedAt: formatDate(item.publishedTimestamp), normalizedSalary: normalizeSalary(item.salary) })).filter((item) => isSearchResult(item)).filter((item) => matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || []))).filter((item) => matchesArea(request.areaId, item.location)).filter((item) => matchesExperience(request.experience, item.experience))
-    .filter((item) => matchesSalary(request, item.salary, item.normalizedSalary));
+  const results = (Array.isArray(payload.results) ? payload.results : []).filter((item) => ATS_SOURCES.has(item.source as AtsJobSource)).map((item) => ({ ...item, source: item.source as AtsJobSource, publishedAt: formatDate(item.publishedTimestamp), normalizedSalary: normalizeSalary(item.salary) })).filter((item) => isSearchResult(item)).map((item) => ({ ...item, workMode: item.workMode || inferWorkMode(item), employmentType: item.employmentType || inferEmploymentType(item) })).filter((item) => applySearchFilters(request, item));
   return { results, nextHhPage: null };
 }
 
@@ -155,14 +177,13 @@ async function searchHh(request: SearchRequest): Promise<AdapterResult> {
   const page = Math.max(0, request.page ?? 0); const params = new URLSearchParams({ q: request.query, area: request.areaId, page: String(page) });
   if (request.salaryFrom) params.set("salary", request.salaryFrom); if (request.salaryCurrency) params.set("currency", request.salaryCurrency); if (request.experience !== "any") params.set("experience", request.experience);
   const payload = await fetchWithTimeout<HhPayload>(`/api/jobs/hh?${params}`, { headers: { Accept: "application/json" } }); if (payload.unavailable) throw new Error(`HH unavailable: ${payload.unavailable}`);
-  const results = (Array.isArray(payload.items) ? payload.items : []).map((item) => { const timestamp = item.published_at ? Date.parse(item.published_at) : 0; const tags = [item.experience?.name, item.schedule?.name, item.employment?.name, ...(item.professional_roles || []).map((role) => role.name)].filter((value): value is string => Boolean(value)); return { id: `hh-${item.id}`, title: item.name, company: item.employer?.name || "Компания не указана", salary: formatSalary(item.salary), location: item.area?.name || "Локация не указана", experience: item.experience?.name || "Опыт не указан", publishedAt: formatDate(timestamp), publishedTimestamp: timestamp, source: "hh" as const, url: item.alternate_url, tags: Array.from(new Set(tags)).slice(0, 5), normalizedSalary: normalizeSalary(formatSalary(item.salary)) }; }).filter((item) => isSearchResult(item)).filter((item) => matchesExperience(request.experience, item.experience)).filter((item) => matchesSalary(request, item.salary, item.normalizedSalary));
+  const results = (Array.isArray(payload.items) ? payload.items : []).map((item) => { const timestamp = item.published_at ? Date.parse(item.published_at) : 0; const tags = [item.experience?.name, item.schedule?.name, item.employment?.name, ...(item.professional_roles || []).map((role) => role.name)].filter((value): value is string => Boolean(value)); return { id: `hh-${item.id}`, title: item.name, company: item.employer?.name || "Компания не указана", salary: formatSalary(item.salary), location: item.area?.name || "Локация не указана", experience: item.experience?.name || "Опыт не указан", workMode: inferWorkMode({ location: item.area?.name || "", title: item.name, description: "", tags: [item.schedule?.name || ""] }), employmentType: inferEmploymentType({ title: item.name, description: "", tags: [item.employment?.name || ""] }), publishedAt: formatDate(timestamp), publishedTimestamp: timestamp, source: "hh" as const, url: item.alternate_url, tags: Array.from(new Set(tags)).slice(0, 5), normalizedSalary: normalizeSalary(formatSalary(item.salary)) }; }).filter((item) => isSearchResult(item)).filter((item) => applySearchFilters(request, item));
   return { results, nextHhPage: payload.page + 1 < payload.pages ? payload.page + 1 : null };
 }
 
 async function searchArbeitnow(request: SearchRequest): Promise<AdapterResult> {
   const payload = await fetchWithTimeout<{ data: ArbeitnowVacancy[] }>("https://www.arbeitnow.com/api/job-board-api", { headers: { Accept: "application/json" } });
-  const results = payload.data.filter((item) => matchesQuery(request.query, item.title, item.company_name, stripHtml(item.description), ...(item.tags || []))).map((item) => { const timestamp = item.created_at ? item.created_at * 1000 : 0; return { id: `arbeitnow-${item.slug}`, title: item.title, company: item.company_name || "Компания не указана", salary: "Зарплата не указана", location: item.location || (item.remote ? "Удалённо" : "Локация не указана"), experience: "Опыт не указан", publishedAt: formatDate(timestamp), publishedTimestamp: timestamp, source: "arbeitnow" as const, url: item.url, tags: (item.tags || []).slice(0, 5), normalizedSalary: normalizeSalary("Зарплата не указана") }; }).filter((item) => isSearchResult(item)).filter((item) => matchesExperience(request.experience, item.experience))
-    .filter((item) => matchesSalary(request, item.salary, item.normalizedSalary));
+  const results = payload.data.filter((item) => matchesQuery(request.query, item.title, item.company_name, stripHtml(item.description), ...(item.tags || []))).map((item) => { const timestamp = item.created_at ? item.created_at * 1000 : 0; return { id: `arbeitnow-${item.slug}`, title: item.title, company: item.company_name || "Компания не указана", salary: "Зарплата не указана", location: item.location || (item.remote ? "Удалённо" : "Локация не указана"), experience: "Опыт не указан", publishedAt: formatDate(timestamp), publishedTimestamp: timestamp, source: "arbeitnow" as const, url: item.url, tags: (item.tags || []).slice(0, 5), normalizedSalary: normalizeSalary("Зарплата не указана") }; }).filter((item) => isSearchResult(item)).map((item) => ({ ...item, workMode: item.workMode || inferWorkMode(item), employmentType: item.employmentType || inferEmploymentType(item) })).filter((item) => applySearchFilters(request, item));
   return { results, nextHhPage: null };
 }
 
