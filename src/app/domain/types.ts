@@ -15,3 +15,65 @@ export interface Config {
   experience: ExperienceFilter;
   telegramChannels: string[];
 }
+
+export interface CareerSkill {
+  id: string;
+  name: string;
+  category: string;
+  level: "beginner" | "intermediate" | "advanced" | "expert";
+  confidence: "confirmed" | "inferred" | "unknown";
+}
+
+export interface CareerExperience {
+  id: string;
+  company: string;
+  role: string;
+  period: string;
+  summary: string;
+  technologies: string[];
+}
+
+export interface CareerProject {
+  id: string;
+  name: string;
+  description: string;
+  url?: string;
+  technologies: string[];
+}
+
+export interface CareerProfile {
+  name: string;
+  headline: string;
+  targetRoles: string[];
+  location: string;
+  workMode: "remote" | "hybrid" | "onsite" | "any";
+  salary: string;
+  languages: string[];
+  skills: CareerSkill[];
+  experience: CareerExperience[];
+  projects: CareerProject[];
+  goals: string[];
+  constraints: string[];
+  updatedAt: string;
+}
+
+export type AiTask =
+  | "analyze-job"
+  | "tailor-resume"
+  | "cover-letter"
+  | "skill-gap"
+  | "interview";
+
+export type AiMode = "gemini-api" | "open-chat";
+
+export interface AiPackage {
+  task: AiTask;
+  profile: CareerProfile;
+  job: {
+    title: string;
+    company?: string;
+    description: string;
+    url?: string;
+  };
+  instructions: string;
+}
