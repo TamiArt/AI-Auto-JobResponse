@@ -70,6 +70,7 @@ async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
 }
 
 test("critical job search flow works in a real browser", async ({ page }) => {
+  page.on("console", (message) => console.log("PAGE_CONSOLE", message.text()));
   let jobicyRequests = 0;
   await mockJobSources(page, () => { jobicyRequests += 1; });
   await page.goto("/");
