@@ -49,7 +49,26 @@ let backendCapability: Promise<boolean> | null = null;
 function formatDate(timestamp: number): string { return timestamp ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(timestamp)) : "Дата не указана"; }
 function formatSalary(salary: HhVacancy["salary"]): string { if (!salary) return "Зарплата не указана"; const parts: string[] = []; if (salary.from) parts.push(`от ${salary.from.toLocaleString("ru-RU")}`); if (salary.to) parts.push(`до ${salary.to.toLocaleString("ru-RU")}`); if (salary.currency) parts.push(salary.currency); return parts.join(" ") || "Зарплата не указана"; }
 async function fetchWithTimeout<T>(url: string, init: RequestInit = {}): Promise<T> { const controller = new AbortController(); const timeout = window.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS); try { const response = await fetch(url, { ...init, signal: controller.signal }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return await response.json() as T; } finally { window.clearTimeout(timeout); } }
-async function detectBackend(): Promise<boolean> { if (backendCapability) return backendCapability; backendCapability = (async () => { const controller = new AbortController(); const timeout = window.setTimeout(() => controller.abort(), CAPABILITY_TIMEOUT_MS); try { const response = await fetch("/api/health", { signal: controller.signal, headers: { Accept: "application/json" }, cache: "no-store" }); if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) return false; const payload = await response.json() as { ok?: unknown }; return payload.ok === true; } catch { return false; } finally { window.clearTimeout(timeout); } })(); return backendCapability; }
+async function detectBackend(): Promise<boolean> {
+  if (backendCapability) return backendCapability;
+  backendCapability = (async () => {
+    const controller = new AbortController();
+    const timeout = window.setTimeout(() => controller.abort(), CAPABILITY_TIMEOUT_MS);
+    try {
+      const response = await fetch("/api/health", { signal: controller.signal, headers: { Accept: "application/json" }, cache: "no-store" });
+      if (!response.ok || !response.headers.get("content-type")?.includes("application/json")) return false;
+      const payload = await response.json() as { ok?: unknown };
+      return payload.ok === true;
+    } catch {
+      return false;
+    } finally {
+      window.clearTimeout(timeout);
+    }
+  })();
+  const available = await backendCapability;
+  if (!available) backendCapability = null;
+  return available;
+}
 export function normalizeBffItems(items: BffSearchResult[], source: RealJobSource, request: SearchRequest): SearchResult[] {
   return items
     .map((item) => ({
