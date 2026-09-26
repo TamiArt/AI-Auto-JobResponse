@@ -36,7 +36,7 @@ async function mockJobSources(page: Page, onJobicyRequest?: (source: string | nu
   );
   await page.route(/\/api\/jobs(?:\/.*|\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
-    const source = url.searchParams.get("source");
+    const source = url.searchParams.get("source") || (url.pathname.match(/\/api\/jobs\/(hh|trudvsem)$/)?.[1] ?? null);
     const body = source === "jobicy"
       ? jobicyPayload
       : source === "hh"
