@@ -3,6 +3,7 @@ import { normalizeTrudvsemPayload, validateTrudvsemRequest } from "../server/tru
 import { buildHhUrl, hhHeaders, validateHhRequest } from "../server/hh.mjs";
 import {
   filterPublicFeedResults,
+  normalizeArbeitnowPayload,
   normalizeJobicyPayload,
   normalizeRemoteOkPayload,
   normalizeRemotivePayload,
@@ -43,12 +44,7 @@ export function sendJson(response, status, body, cacheSeconds = 0) {
   applyHeaders(response);
   response.setHeader("Content-Type", "application/json; charset=utf-8");
   response.setHeader("Cache-Control", "no-store");
-  if (cacheSeconds > 0) {
-    response.setHeader(
-      "Vercel-CDN-Cache-Control",
-      `public, s-maxage=${cacheSeconds}, stale-while-revalidate=${cacheSeconds}, stale-if-error=86400`,
-    );
-  }
+  if (cacheSeconds > 0) response.setHeader("Vercel-CDN-Cache-Control", `public, s-maxage=${cacheSeconds}, stale-while-revalidate=${cacheSeconds}, stale-if-error=86400`);
   response.status(status).end(JSON.stringify(body));
 }
 
@@ -68,10 +64,7 @@ async function fetchResponseWithTimeout(url, { headers = {} } = {}) {
 
 async function fetchWithTimeout(url, { parse = "json", headers = {} } = {}) {
   const response = await fetchResponseWithTimeout(url, {
-    headers: {
-      Accept: parse === "json" ? "application/json" : "application/rss+xml, application/xml, text/xml",
-      ...headers,
-    },
+    headers: { Accept: parse === "json" ? "application/json" : "application/rss+xml, application/xml, text/xml", ...headers },
   });
   if (!response.ok) throw new Error(`Upstream HTTP ${response.status}`);
   return parse === "json" ? response.json() : response.text();
@@ -79,23 +72,14 @@ async function fetchWithTimeout(url, { parse = "json", headers = {} } = {}) {
 
 function feedMeta(source, now = Date.now()) {
   const refreshIntervalMs = CACHE_SECONDS[source] * 1000;
-  return {
-    lastUpdated: now,
-    nextRefresh: now + refreshIntervalMs,
-    refreshIntervalMs,
-    cached: false,
-    stale: false,
-  };
+  return { lastUpdated: now, nextRefresh: now + refreshIntervalMs, refreshIntervalMs, cached: false, stale: false };
 }
 
 async function mapConcurrent(items, limit, worker) {
   const output = new Array(items.length);
   let cursor = 0;
   async function run() {
-    while (cursor < items.length) {
-      const index = cursor++;
-      output[index] = await worker(items[index]);
-    }
+    while (cursor < items.length) output[cursor] = await worker(items[cursor++]);
   }
   await Promise.all(Array.from({ length: Math.min(limit, items.length) }, run));
   return output;
@@ -104,14 +88,8 @@ async function mapConcurrent(items, limit, worker) {
 async function loadHh(url) {
   const validation = validateHhRequest(url.searchParams);
   if (!validation.ok) return { status: validation.status, body: { error: validation.error } };
-
   const upstream = await fetchResponseWithTimeout(buildHhUrl(validation), { headers: hhHeaders() });
-  if (upstream.status === 403) {
-    return {
-      status: 200,
-      body: { items: [], page: validation.page, pages: 0, unavailable: "captcha_or_access_restriction" },
-    };
-  }
+  if (upstream.status === 403) return { status: 200, body: { items: [], page: validation.page, pages: 0, unavailable: "captcha_or_access_restriction" } };
   if (!upstream.ok) throw new Error(`Upstream HTTP ${upstream.status}`);
   return { status: 200, body: await upstream.json() };
 }
@@ -119,9 +97,7 @@ async function loadHh(url) {
 async function loadPublicSnapshot(source) {
   let jobs;
   if (source === "remoteok") {
-    jobs = normalizeRemoteOkPayload(await fetchWithTimeout(API_URLS.remoteok, {
-      headers: { "User-Agent": "HuntPulse/0.1 (github.com/TamiArt/AI-Auto-JobResponse)" },
-    }));
+    jobs = normalizeRemoteOkPayload(await fetchWithTimeout(API_URLS.remoteok, { headers: { "User-Agent": "HuntPulse/0.1 (github.com/TamiArt/AI-Auto-JobResponse)" } }));
   } else if (source === "weworkremotely") {
     jobs = normalizeWwrRss(await fetchWithTimeout(API_URLS.weworkremotely, { parse: "text" }));
   } else if (source === "remotive") {
@@ -129,18 +105,7 @@ async function loadPublicSnapshot(source) {
   } else if (source === "jobicy") {
     jobs = normalizeJobicyPayload(await fetchWithTimeout(API_URLS.jobicy));
   } else if (source === "arbeitnow") {
-    const payload = await fetchWithTimeout(API_URLS.arbeitnow, { headers: { "User-Agent": "JOBOS-AI/1.0" } });
-    jobs = Array.isArray(payload?.data) ? payload.data.map((job) => ({
-      id: `arbeitnow-${String(job?.slug || job?.url || "")}`,
-      title: String(job?.title || "").trim(),
-      company: String(job?.company_name || "Компания не указана").trim(),
-      salary: "Зарплата не указана",
-      location: String(job?.location || (job?.remote ? "Удалённо" : "Локация не указана")).trim(),
-      experience: "Опыт не указан",
-      publishedTimestamp: typeof job?.created_at === "number" ? job.created_at * 1000 : 0,
-      url: String(job?.url || "").trim(),
-      tags: Array.isArray(job?.tags) ? job.tags.map((tag) => String(tag).trim()).filter(Boolean).slice(0, 5) : [],
-    })).filter((job) => job.title && job.url.startsWith("http")) : [];
+    jobs = normalizeArbeitnowPayload(await fetchWithTimeout(API_URLS.arbeitnow, { headers: { "User-Agent": "JOBOS-AI/1.0" } }));
   } else {
     throw new Error("unsupported_source");
   }
@@ -157,12 +122,8 @@ async function loadTrudvsem(url) {
 
 async function loadAtsSnapshot() {
   const rows = await mapConcurrent(ATS_EMPLOYERS, ATS_CONCURRENCY, async (employer) => {
-    try {
-      const jobs = normalizeAtsPayload(await fetchWithTimeout(buildAtsUrl(employer)), employer);
-      return { employer, jobs, error: false };
-    } catch {
-      return { employer, jobs: [], error: true };
-    }
+    try { return { employer, jobs: normalizeAtsPayload(await fetchWithTimeout(buildAtsUrl(employer)), employer), error: false }; }
+    catch { return { employer, jobs: [], error: true }; }
   });
   const providers = {};
   for (const row of rows) {
@@ -172,15 +133,7 @@ async function loadAtsSnapshot() {
     if (row.error) status.failed += 1;
     providers[row.employer.provider] = status;
   }
-  return {
-    results: filterAtsResults(rows.flatMap((row) => row.jobs), ""),
-    meta: {
-      employers: ATS_EMPLOYERS.length,
-      availableEmployers: rows.filter((row) => row.jobs.length).length,
-      providers,
-      ...feedMeta("ats"),
-    },
-  };
+  return { results: filterAtsResults(rows.flatMap((row) => row.jobs), ""), meta: { employers: ATS_EMPLOYERS.length, availableEmployers: rows.filter((row) => row.jobs.length).length, providers, ...feedMeta("ats") } };
 }
 
 function rejectSnapshotQuery(url, response) {
@@ -212,9 +165,7 @@ export async function handleSource(source, request, response) {
     return sendJson(response, 200, body, CACHE_SECONDS[source]);
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
-    return sendJson(response, timedOut ? 504 : 502, {
-      error: timedOut ? "upstream_timeout" : "upstream_unavailable",
-    });
+    return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
   }
 }
 
@@ -225,14 +176,5 @@ export function handleHealth(request, response) {
 
 export function handleStatus(request, response) {
   if (request.method !== "GET") return sendJson(response, 405, { error: "method_not_allowed" });
-  return sendJson(response, 200, {
-    ok: true,
-    runtime: "vercel-function",
-    cache: "vercel-cdn",
-    cacheKeyPolicy: "source-snapshot",
-    snapshotSources: SNAPSHOT_SOURCES,
-    upstreamTimeoutMs: UPSTREAM_TIMEOUT_MS,
-    atsConcurrency: ATS_CONCURRENCY,
-    cacheSeconds: CACHE_SECONDS,
-  });
+  return sendJson(response, 200, { ok: true, runtime: "vercel-function", cache: "vercel-cdn", cacheKeyPolicy: "source-snapshot", snapshotSources: SNAPSHOT_SOURCES, upstreamTimeoutMs: UPSTREAM_TIMEOUT_MS, atsConcurrency: ATS_CONCURRENCY, cacheSeconds: CACHE_SECONDS });
 }
