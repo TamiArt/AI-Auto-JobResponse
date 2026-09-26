@@ -10,7 +10,7 @@ const jobicyPayload = {
     title: "QA Engineer",
     company: "Example Product",
     salary: "120000 USD",
-    location: "Remote",
+    location: "Москва",
     experience: "Опыт не указан",
     publishedTimestamp: 1_787_050_800_000,
     url: TEST_JOB_URL,
