@@ -43,8 +43,6 @@ async function mockJobSources(page: Page, onJobicyRequest?: (source: string | nu
         ? { items: [], page: 0, pages: 0 }
         : emptyPayload;
     onJobicyRequest?.(source);
-
-
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -136,7 +134,7 @@ test("static preview never calls HH directly and keeps browser-safe search", asy
     }),
   );
 
-  await page.route("**/api/jobs*", async (route) => {
+  await page.route(/\/api\/jobs(?:\/.*|\?.*)?$/, async (route) => {
     bffJobRequests += 1;
     const url = new URL(route.request().url());
     const source = url.searchParams.get("source");
