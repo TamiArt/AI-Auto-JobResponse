@@ -26,7 +26,7 @@ const jobicyPayload = {
   },
 };
 
-async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
+async function mockJobSources(page: Page, onJobicyRequest?: (source: string | null) => void) {
   await page.route("**/api/health**", (route) =>
     route.fulfill({
       status: 200,
@@ -42,7 +42,7 @@ async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
       : source === "hh"
         ? { items: [], page: 0, pages: 0 }
         : emptyPayload;
-    if (source === "jobicy") { onJobicyRequest?.(); console.log("E2E_JOBICY_REQUEST", route.request().url(), JSON.stringify(body)); }
+    if (source === "jobicy") { onJobicyRequest?.(source); console.log("E2E_JOBICY_REQUEST", route.request().url(), JSON.stringify(body)); }
 
     await route.fulfill({
       status: 200,
@@ -70,7 +70,8 @@ async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
 
 test("critical job search flow works in a real browser", async ({ page }) => {
   let jobicyRequests = 0;
-  await mockJobSources(page, () => { jobicyRequests += 1; });
+  const requestedSources = new Set<string>();
+  await mockJobSources(page, (source) => { jobicyRequests += 1; if (source) requestedSources.add(source); });
   await page.goto("/");
 
   const searchInput = page.getByPlaceholder("QA-инженер, дизайнер, разработчик…");
@@ -91,6 +92,7 @@ test("critical job search flow works in a real browser", async ({ page }) => {
   await page.getByRole("button", { name: "Найти", exact: true }).click();
 
   await expect.poll(() => jobicyRequests).toBeGreaterThan(0);
+  expect([...requestedSources]).toEqual(expect.arrayContaining(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"]));
   const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
   await expect(card).toBeVisible();
   await expect(card).toContainText("Example Product");
