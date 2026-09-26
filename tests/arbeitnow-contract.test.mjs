@@ -13,6 +13,7 @@ test("Arbeitnow payload normalizes to JOBOS search contract", () => {
       created_at: 1790000000,
       url: "https://example.com/jobs/qa-engineer-1",
       tags: ["QA", "Testing"],
+      job_types: ["Full-time permanent"],
       description: "Web application testing",
     }],
   });
@@ -22,7 +23,23 @@ test("Arbeitnow payload normalizes to JOBOS search contract", () => {
   assert.equal(jobs[0].title, "QA Engineer");
   assert.equal(jobs[0].company, "Example Labs");
   assert.equal(jobs[0].workMode, "remote");
+  assert.equal(jobs[0].employmentType, "fullTime");
   assert.equal(jobs[0].url, "https://example.com/jobs/qa-engineer-1");
+});
+
+test("Arbeitnow salary is extracted from public job description", () => {
+  const [job] = normalizeArbeitnowPayload({
+    data: [{
+      slug: "qa-paid",
+      title: "QA Engineer",
+      company_name: "Example Labs",
+      location: "Berlin",
+      url: "https://example.com/jobs/qa-paid",
+      description: "The expected salary range is €60.000 – €75.000 EUR.",
+    }],
+  });
+
+  assert.equal(job.salary, "€60.000–€75.000 EUR");
 });
 
 test("Arbeitnow search filtering includes title, company, location and description", () => {
