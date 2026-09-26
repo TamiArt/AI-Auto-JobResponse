@@ -50,10 +50,31 @@ function formatSalary(salary: HhVacancy["salary"]): string { if (!salary) return
 function normalizeText(value: string): string { return value.toLocaleLowerCase("ru-RU").replace(/ё/g, "е"); }
 function matchesQuery(query: string, ...values: Array<string | undefined>): boolean { const terms = normalizeText(query).split(/\s+/).filter(Boolean); const haystack = normalizeText(values.filter(Boolean).join(" ")); return terms.every((term) => haystack.includes(term)); }
 function matchesArea(areaId: string, location: string): boolean { const normalized = normalizeText(location); if (areaId === "1") return normalized.includes("москва") && !normalized.includes("московская область"); if (areaId === "2") return normalized.includes("санкт-петербург"); return true; }
+function parseSalaryNumber(raw: string): number | null {
+  const compact = raw.replace(/\s/g, "");
+  if (!compact) return null;
+  const comma = compact.lastIndexOf(",");
+  const dot = compact.lastIndexOf(".");
+  let normalized = compact;
+  if (comma >= 0 && dot >= 0) {
+    const decimalSeparator = comma > dot ? "," : ".";
+    const thousandsSeparator = decimalSeparator === "," ? "." : ",";
+    normalized = compact.replace(new RegExp("\\\" + thousandsSeparator, "g"), "").replace(decimalSeparator, ".");
+  } else if (comma >= 0 || dot >= 0) {
+    const separator = comma >= 0 ? "," : ".";
+    const digitsAfter = compact.length - compact.lastIndexOf(separator) - 1;
+    normalized = digitsAfter === 3 ? compact.replace(separator, "") : compact.replace(separator, ".");
+  }
+  const value = Number(normalized);
+  return Number.isFinite(value) ? value : null;
+}
+
 function normalizeSalary(salary: string): NormalizedSalary {
   const originalText = salary || "Зарплата не указана";
   const text = normalizeText(originalText);
-  const numbers = Array.from(text.matchAll(/\d[\d\s.,]*/g)).map((match) => Number(match[0].replace(/\s/g, "").replace(/,(?=\d{3}(?:\D|$))/g, "").replace(",", "."))).filter(Number.isFinite);
+  const numbers = Array.from(text.matchAll(/\d[\d\s.,]*/g))
+    .map((match) => parseSalaryNumber(match[0]))
+    .filter((value): value is number => value !== null);
   const currency = /\b(rub|руб|₽|rur)\b/.test(text) ? "RUB" : /\b(usd|долл)\b|\$/.test(text) ? "USD" : /\b(eur|евро)\b|€/.test(text) ? "EUR" : /\b(gbp|фунт)\b|£/.test(text) ? "GBP" : null;
   const period = /час|hour|hourly|в час/.test(text) ? "hour" : /год|year|annual|annually|в год/.test(text) ? "year" : /месяц|month|monthly|в месяц/.test(text) ? "month" : "unknown";
   return { min: numbers.length > 1 ? Math.min(...numbers) : numbers[0] ?? null, max: numbers.length > 1 ? Math.max(...numbers) : numbers[0] ?? null, currency, period, originalText };
