@@ -47,6 +47,29 @@ export function normalizeRemoteOkPayload(payload) {
   }).filter(Boolean);
 }
 
+export function normalizeArbeitnowPayload(payload) {
+  const jobs = Array.isArray(payload?.data) ? payload.data : [];
+  return jobs.map((job) => {
+    const slug = text(job?.slug);
+    const url = safeUrl(job?.url);
+    const title = text(job?.title);
+    if (!title || !url) return null;
+    return {
+      id: `arbeitnow-${slug || url}`,
+      title,
+      company: text(job?.company_name) || "Компания не указана",
+      salary: "Зарплата не указана",
+      location: text(job?.location) || (job?.remote ? "Удалённо" : "Локация не указана"),
+      experience: "Опыт не указан",
+      publishedTimestamp: timestamp(job?.created_at),
+      url,
+      tags: Array.isArray(job?.tags) ? job.tags.map(text).filter(Boolean).slice(0, 5) : [],
+      description: text(job?.description),
+      workMode: job?.remote ? "remote" : undefined,
+    };
+  }).filter(Boolean);
+}
+
 function decodeXml(value) {
   return text(value)
     .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
@@ -143,7 +166,7 @@ export function filterPublicFeedResults(results, query) {
   const terms = text(query).toLocaleLowerCase("ru-RU").replace(/ё/g, "е").split(/\s+/).filter(Boolean);
   if (!terms.length) return list;
   return list.filter((job) => {
-    const haystack = [job.title, job.company, job.location, ...(job.tags || [])]
+    const haystack = [job.title, job.company, job.location, job.description, ...(job.tags || [])]
       .join(" ").toLocaleLowerCase("ru-RU").replace(/ё/g, "е");
     return terms.every((term) => haystack.includes(term));
   });
