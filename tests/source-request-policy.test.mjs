@@ -9,7 +9,7 @@ import {
 test("snapshot source URLs never depend on the user query", () => {
   for (const source of SNAPSHOT_BFF_SOURCES) {
     assert.equal(buildBffSourcePath(source, "QA инженер"), `/api/jobs?source=${source}`);
-    assert.equal(buildBffSourcePath(source, "Java developer"), `/api/jobs/${source}`);
+    assert.equal(buildBffSourcePath(source, "Java developer"), `/api/jobs?source=${source}`);
     assert.equal(isSnapshotBffSource(source), true);
   }
 });
