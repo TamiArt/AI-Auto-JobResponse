@@ -1,5 +1,5 @@
 function normalizeText(value) {
-  return String(value ?? "").toLocaleLowerCase("ru-RU").replace(/ё/g, "e").trim();
+  return String(value ?? "").toLocaleLowerCase("ru-RU").replace(/ё/g, "е").trim();
 }
 
 export function matchesQuery(query, ...values) {
