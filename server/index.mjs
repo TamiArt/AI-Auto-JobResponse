@@ -17,6 +17,7 @@ import {
 import { buildAtsUrl, filterAtsResults, normalizeAtsPayload } from "./atsFeeds.mjs";
 import { ATS_CACHE_MS, ATS_CONCURRENCY, ATS_EMPLOYERS } from "./atsRegistry.mjs";
 import { createRuntimeStatus, withSecurityHeaders } from "./httpPolicy.mjs";
+import { filterTelegramResults, normalizeTelegramHtml, validateTelegramRequest } from "./telegramPublic.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const DIST_DIR = join(ROOT, "dist");
@@ -31,7 +32,7 @@ const REMOTE_OK_API = "https://remoteok.com/api";
 const WWR_RSS = "https://weworkremotely.com/remote-jobs.rss";
 const REMOTIVE_API = "https://remotive.com/api/remote-jobs";
 const JOBICY_API = "https://jobicy.com/api/v2/remote-jobs?count=100";
-const ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api";
+const ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api";\nconst TELEGRAM_TIMEOUT_MS = 12_000;
 const feedCache = new Map();
 const atsCache = new Map();
 
@@ -160,6 +161,33 @@ async function fetchRemotive(query) {
   return fetchNormalizedFeed({ key: "remotive", cacheMs: REMOTIVE_CACHE_MS, query, loader: async () => normalizeRemotivePayload(await fetchWithTimeout(REMOTIVE_API)) });
 }
 
+async function fetchTelegramChannel(channel) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
+  try {
+    const response = await fetch(`https://t.me/s/${encodeURIComponent(channel)}`, {
+      signal: controller.signal,
+      headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0 (compatible; JOBOS/1.0)" },
+    });
+    if (!response.ok) throw new Error(`Telegram HTTP ${response.status}`);
+    return normalizeTelegramHtml(await response.text(), channel);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function fetchTelegram(url) {
+  const validation = validateTelegramRequest(url.searchParams);
+  if (!validation.ok) throw new Error(validation.error);
+  const query = url.searchParams.get("q") || "";
+  const settled = await Promise.allSettled(validation.channels.map(fetchTelegramChannel));
+  const results = settled.flatMap((entry) => entry.status === "fulfilled" ? entry.value : []);
+  return {
+    results: filterTelegramResults(results, query),
+    meta: { channels: validation.channels, lastUpdated: Date.now() },
+  };
+}
+
 async function fetchArbeitnow(query) {
   return fetchNormalizedFeed({
     key: "arbeitnow", cacheMs: STANDARD_FEED_CACHE_MS, query,
@@ -266,6 +294,7 @@ async function handleApi(request, response, url) {
   if (url.pathname === "/api/jobs/ats") return handlePublicFeed(response, url, fetchAts);
   if (source === "ats") return handleSnapshotFeed(response, url, fetchAts);
   if (source === "arbeitnow") return handleSnapshotFeed(response, url, fetchArbeitnow);
+  if (source === "telegram") return handleSnapshotFeed(response, url, fetchTelegram);
   if (url.pathname !== "/api/jobs/trudvsem") return sendJson(response, 404, { error: "not_found" });
 
   const validation = validateTrudvsemRequest(url.searchParams.get("q"), url.searchParams.get("offset"));
