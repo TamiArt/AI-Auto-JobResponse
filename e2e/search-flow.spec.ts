@@ -42,7 +42,8 @@ async function mockJobSources(page: Page, onJobicyRequest?: (source: string | nu
       : source === "hh"
         ? { items: [], page: 0, pages: 0 }
         : emptyPayload;
-    if (source === "jobicy") { onJobicyRequest?.(source); console.log("E2E_JOBICY_REQUEST", route.request().url(), JSON.stringify(body)); }
+    onJobicyRequest?.(source);
+    if (source === "jobicy") { console.log("E2E_JOBICY_REQUEST", route.request().url(), JSON.stringify(body)); }
 
     await route.fulfill({
       status: 200,
@@ -71,7 +72,7 @@ async function mockJobSources(page: Page, onJobicyRequest?: (source: string | nu
 test("critical job search flow works in a real browser", async ({ page }) => {
   let jobicyRequests = 0;
   const requestedSources = new Set<string>();
-  await mockJobSources(page, (source) => { jobicyRequests += 1; if (source) requestedSources.add(source); });
+  await mockJobSources(page, (source) => { if (source) requestedSources.add(source); if (source === "jobicy") jobicyRequests += 1; });
   await page.goto("/");
 
   const searchInput = page.getByPlaceholder("QA-инженер, дизайнер, разработчик…");
