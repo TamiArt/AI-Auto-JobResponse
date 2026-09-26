@@ -215,6 +215,18 @@ async function handlePublicFeed(response, url, loader) {
   }
 }
 
+async function handleSnapshotFeed(response, url, loader) {
+  const query = url.searchParams.get("q") || "";
+  if (query.length > 160) return sendJson(response, 400, { error: "invalid_parameters" });
+  try {
+    sendJson(response, 200, await loader(query));
+  } catch (error) {
+    const timedOut = error instanceof DOMException && error.name === "AbortError";
+    sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
+  }
+}
+
+
 async function handleTrudvsemView(response, url) {
   const validation = validateTrudvsemViewRequest(url.searchParams.get("company"), url.searchParams.get("id"));
   if (!validation.ok) return sendHtml(response, validation.status, "Некорректная ссылка вакансии");
@@ -243,12 +255,17 @@ async function handleApi(request, response, url) {
       return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
     }
   }
-  if (url.pathname === "/api/jobs/remoteok" || source === "remoteok") return handlePublicFeed(response, url, fetchRemoteOk);
-  if (url.pathname === "/api/jobs/weworkremotely" || source === "weworkremotely") return handlePublicFeed(response, url, fetchWwr);
-  if (url.pathname === "/api/jobs/remotive" || source === "remotive") return handlePublicFeed(response, url, fetchRemotive);
-  if (url.pathname === "/api/jobs/jobicy" || source === "jobicy") return handlePublicFeed(response, url, fetchJobicy);
-  if (url.pathname === "/api/jobs/ats" || source === "ats") return handlePublicFeed(response, url, fetchAts);
-  if (source === "arbeitnow") return handlePublicFeed(response, url, fetchArbeitnow);
+  if (url.pathname === "/api/jobs/remoteok") return handlePublicFeed(response, url, fetchRemoteOk);
+  if (source === "remoteok") return handleSnapshotFeed(response, url, fetchRemoteOk);
+  if (url.pathname === "/api/jobs/weworkremotely") return handlePublicFeed(response, url, fetchWwr);
+  if (source === "weworkremotely") return handleSnapshotFeed(response, url, fetchWwr);
+  if (url.pathname === "/api/jobs/remotive") return handlePublicFeed(response, url, fetchRemotive);
+  if (source === "remotive") return handleSnapshotFeed(response, url, fetchRemotive);
+  if (url.pathname === "/api/jobs/jobicy") return handlePublicFeed(response, url, fetchJobicy);
+  if (source === "jobicy") return handleSnapshotFeed(response, url, fetchJobicy);
+  if (url.pathname === "/api/jobs/ats") return handlePublicFeed(response, url, fetchAts);
+  if (source === "ats") return handleSnapshotFeed(response, url, fetchAts);
+  if (source === "arbeitnow") return handleSnapshotFeed(response, url, fetchArbeitnow);
   if (url.pathname !== "/api/jobs/trudvsem") return sendJson(response, 404, { error: "not_found" });
 
   const validation = validateTrudvsemRequest(url.searchParams.get("q"), url.searchParams.get("offset"));
