@@ -27,6 +27,17 @@ function salaryFromRemoteOk(job) {
   return "Зарплата не указана";
 }
 
+function salaryFromArbeitnow(job) {
+  const direct = text(job?.salary || job?.salary_range || job?.salaryRange);
+  if (direct) return direct;
+  const description = text(job?.description);
+  const range = description.match(/(?:salary range|pay range|compensation|remuneration)[^€$£\d]{0,100}([€$£]\s?[\d.,]+)\s*(?:-|–|—|to)\s*([€$£]\s?[\d.,]+)(?:\s*(EUR|USD|GBP))?/i);
+  if (range) return `${range[1]}–${range[2]}${range[3] ? ` ${range[3]}` : ""}`;
+  const values = description.match(/[€$£]\s?[\d]{2,3}(?:[.,]\d{3})+(?:\s?(?:EUR|USD|GBP))?/gi);
+  if (values?.length) return values.slice(0, 2).join("–");
+  return "Зарплата не указана";
+}
+
 export function normalizeRemoteOkPayload(payload) {
   if (!Array.isArray(payload)) return [];
   return payload.map((job) => {
@@ -54,18 +65,20 @@ export function normalizeArbeitnowPayload(payload) {
     const url = safeUrl(job?.url);
     const title = text(job?.title);
     if (!title || !url) return null;
+    const jobTypes = Array.isArray(job?.job_types) ? job.job_types.map(text).filter(Boolean) : [];
     return {
       id: `arbeitnow-${slug || url}`,
       title,
       company: text(job?.company_name) || "Компания не указана",
-      salary: "Зарплата не указана",
+      salary: salaryFromArbeitnow(job),
       location: text(job?.location) || (job?.remote ? "Удалённо" : "Локация не указана"),
       experience: "Опыт не указан",
       publishedTimestamp: timestamp(job?.created_at),
       url,
-      tags: Array.isArray(job?.tags) ? job.tags.map(text).filter(Boolean).slice(0, 5) : [],
+      tags: [...(Array.isArray(job?.tags) ? job.tags.map(text) : []), ...jobTypes].filter(Boolean).slice(0, 8),
       description: text(job?.description),
       workMode: job?.remote ? "remote" : undefined,
+      employmentType: /part.?time|непол/i.test(jobTypes.join(" ")) ? "partTime" : /contract|freelance|контракт/i.test(jobTypes.join(" ")) ? "contract" : /intern|стаж|trainee/i.test(jobTypes.join(" ")) ? "internship" : jobTypes.length ? "fullTime" : undefined,
     };
   }).filter(Boolean);
 }
