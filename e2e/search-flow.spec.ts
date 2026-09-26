@@ -67,6 +67,7 @@ test("critical job search flow works in a real browser", async ({ page }) => {
 
   const searchInput = page.getByPlaceholder("QA-инженер, дизайнер, разработчик…");
   await expect(page.getByRole("heading", { name: "Найти работу" })).toBeVisible();
+  await page.locator("label").filter({ hasText: "Регион" }).getByRole("combobox").selectOption("0");
   await searchInput.fill(TEST_QUERY);
   await page.getByRole("button", { name: "Найти", exact: true }).click();
 
