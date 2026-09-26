@@ -26,7 +26,7 @@ const jobicyPayload = {
   },
 };
 
-async function mockJobSources(page: Page) {
+async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
   await page.route("**/api/health", (route) =>
     route.fulfill({
       status: 200,
@@ -37,6 +37,7 @@ async function mockJobSources(page: Page) {
   await page.route("**/api/jobs*", async (route) => {
     const url = new URL(route.request().url());
     const source = url.searchParams.get("source");
+    if (source === "jobicy") onJobicyRequest?.();
     const body = source === "jobicy"
       ? jobicyPayload
       : source === "hh"
@@ -68,7 +69,8 @@ async function mockJobSources(page: Page) {
 }
 
 test("critical job search flow works in a real browser", async ({ page }) => {
-  await mockJobSources(page);
+  let jobicyRequests = 0;
+  await mockJobSources(page, () => { jobicyRequests += 1; });
   await page.goto("/");
 
   const searchInput = page.getByPlaceholder("QA-инженер, дизайнер, разработчик…");
@@ -77,6 +79,7 @@ test("critical job search flow works in a real browser", async ({ page }) => {
   await searchInput.fill(TEST_QUERY);
   await page.getByRole("button", { name: "Найти", exact: true }).click();
 
+  await expect.poll(() => jobicyRequests).toBeGreaterThan(0);
   const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
   await expect(card).toBeVisible();
   await expect(card).toContainText("Example Product");
