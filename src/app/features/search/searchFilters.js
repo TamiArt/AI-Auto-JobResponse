@@ -77,7 +77,7 @@ export function matchesWorkMode(request, item) {
 export function matchesLocation(request, item) {
   if (!request.location?.trim()) return true;
   const wanted = normalizeText(request.location);
-  return normalizeText(item.location).includes(wanted) || normalizeText([item.title, item.description].join(" ")).includes(wanted);
+  return normalizeText(item.location).includes(wanted);
 }
 
 export function inferEmploymentType(item) {
