@@ -3,6 +3,7 @@ export const SNAPSHOT_BFF_SOURCES = Object.freeze([
   "weworkremotely",
   "remotive",
   "jobicy",
+  "arbeitnow",
   "ats",
 ]);
 
