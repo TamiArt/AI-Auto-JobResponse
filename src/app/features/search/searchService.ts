@@ -59,7 +59,7 @@ function parseSalaryNumber(raw: string): number | null {
   if (comma >= 0 && dot >= 0) {
     const decimalSeparator = comma > dot ? "," : ".";
     const thousandsSeparator = decimalSeparator === "," ? "." : ",";
-    normalized = compact.replace(new RegExp("\\\" + thousandsSeparator, "g"), "").replace(decimalSeparator, ".");
+    normalized = compact.split(thousandsSeparator).join("").replace(decimalSeparator, ".");
   } else if (comma >= 0 || dot >= 0) {
     const separator = comma >= 0 ? "," : ".";
     const digitsAfter = compact.length - compact.lastIndexOf(separator) - 1;
