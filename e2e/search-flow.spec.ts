@@ -27,7 +27,7 @@ const jobicyPayload = {
 };
 
 async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
-  await page.route("**/api/health", (route) =>
+  await page.route("**/api/health**", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
