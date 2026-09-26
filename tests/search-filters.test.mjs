@@ -6,6 +6,7 @@ import {
   matchesExperience,
   matchesSalary,
   matchesWorkMode,
+  matchesLocation,
   matchesEmploymentType,
   normalizeSalary,
 } from "../src/app/features/search/searchFilters.js";
@@ -58,6 +59,11 @@ test("salary normalization handles thousands separators", () => {
   assert.deepEqual(normalizeSalary("120 000 USD").min, 120000);
   assert.deepEqual(normalizeSalary("120,000 USD").max, 120000);
   assert.deepEqual(normalizeSalary("120.000 USD").max, 120000);
+});
+
+test("location filter matches the location field instead of description text", () => {
+  assert.equal(matchesLocation({ ...baseRequest, location: "London" }, { ...job, location: "Москва", description: "Команда работает с London" }), false);
+  assert.equal(matchesLocation({ ...baseRequest, location: "Москва" }, job), true);
 });
 
 test("work mode and employment filters honor explicit normalized values", () => {
