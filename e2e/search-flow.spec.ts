@@ -37,12 +37,12 @@ async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
   await page.route("**/api/jobs*", async (route) => {
     const url = new URL(route.request().url());
     const source = url.searchParams.get("source");
-    if (source === "jobicy") { onJobicyRequest?.(); console.log("E2E_JOBICY_REQUEST", route.request().url(), JSON.stringify(body)); }
     const body = source === "jobicy"
       ? jobicyPayload
       : source === "hh"
         ? { items: [], page: 0, pages: 0 }
         : emptyPayload;
+    if (source === "jobicy") { onJobicyRequest?.(); console.log("E2E_JOBICY_REQUEST", route.request().url(), JSON.stringify(body)); }
 
     await route.fulfill({
       status: 200,
