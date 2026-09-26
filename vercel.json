@@ -43,5 +43,6 @@
       "source": "/api/jobs/:source",
       "destination": "/api/jobs?source=:source"
     }
-  ]
+  ],
+  "buildCommand": "npm run check:server && npm run build"
 }

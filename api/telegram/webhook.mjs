@@ -12,7 +12,7 @@ async function telegram(method, body) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
-  if (!BOT_TOKEN) return res.status(503).json({ error: "telegram_bot_not_configured" });
+  if (!BOT_TOKEN || !MINI_APP_URL) return res.status(503).json({ error: "telegram_bot_not_configured" });
 
   const message = req.body?.message;
   const chatId = message?.chat?.id;
@@ -20,7 +20,7 @@ export default async function handler(req, res) {
   if (!chatId) return res.status(200).json({ ok: true, ignored: true });
 
   if (text === "/start" || text === "/app") {
-    const url = MINI_APP_URL || "https://example.com";
+    const url = MINI_APP_URL;
     await telegram("sendMessage", {
       chat_id: chatId,
       text: "JOBOS — твой Career Operating System. Открой приложение, чтобы искать вакансии, вести Career Graph и анализировать подходящие предложения.",

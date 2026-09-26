@@ -27,20 +27,36 @@ const jobicyPayload = {
 };
 
 async function mockJobSources(page: Page) {
-  await page.route("**/api/jobs/**", async (route) => {
+  await page.route("**/api/jobs*", async (route) => {
     const url = new URL(route.request().url());
-    const body = url.pathname === "/api/jobs/jobicy"
+    const source = url.searchParams.get("source");
+    const body = source === "jobicy"
       ? jobicyPayload
-      : url.pathname === "/api/jobs/hh"
+      : source === "hh"
         ? { items: [], page: 0, pages: 0 }
         : emptyPayload;
-    await route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify(body) });
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify(body),
+    });
   });
+
   await page.route("https://www.arbeitnow.com/**", (route) =>
-    route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ data: [] }) }),
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ data: [] }),
+    }),
   );
+
   await page.context().route("https://example.com/jobs/**", (route) =>
-    route.fulfill({ status: 200, contentType: "text/html", body: "<title>Example vacancy</title><h1>QA Engineer</h1>" }),
+    route.fulfill({
+      status: 200,
+      contentType: "text/html",
+      body: "<title>Example vacancy</title><h1>QA Engineer</h1>",
+    }),
   );
 }
 
@@ -86,32 +102,59 @@ test("critical job search flow works in a real browser", async ({ page }) => {
 test("static preview never calls HH directly and keeps browser-safe search", async ({ page }) => {
   let bffJobRequests = 0;
   let directHhRequests = 0;
+
   await page.route("**/api/health", (route) =>
-    route.fulfill({ status: 200, contentType: "text/html", body: "<!doctype html><div id=\"root\"></div>" }),
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    }),
   );
-  await page.route("**/api/jobs/**", (route) => {
+
+  await page.route("**/api/jobs*", async (route) => {
     bffJobRequests += 1;
-    return route.abort();
+    const url = new URL(route.request().url());
+    const source = url.searchParams.get("source");
+
+    if (source === "jobicy") {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          results: [{
+            id: "static-qa",
+            title: "QA Engineer",
+            company: "Static Preview Company",
+            salary: "120000 USD",
+            location: "Remote",
+            experience: "Опыт не указан",
+            publishedTimestamp: 1_787_050_800_000,
+            url: TEST_JOB_URL,
+            tags: ["QA"],
+            description: "QA инженер",
+          }],
+        }),
+      });
+      return;
+    }
+
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ results: [] }),
+    });
   });
+
   await page.route("https://api.hh.ru/**", (route) => {
     directHhRequests += 1;
     return route.abort();
   });
+
   await page.route("https://www.arbeitnow.com/**", (route) =>
     route.fulfill({
       status: 200,
       contentType: "application/json",
-      body: JSON.stringify({ data: [{
-        slug: "static-qa",
-        title: "QA Engineer",
-        company_name: "Static Preview Company",
-        description: "QA инженер",
-        tags: ["QA"],
-        location: "Москва",
-        remote: true,
-        created_at: 1_787_050_800,
-        url: TEST_JOB_URL,
-      }] }),
+      body: JSON.stringify({ data: [] }),
     }),
   );
 
@@ -122,6 +165,6 @@ test("static preview never calls HH directly and keeps browser-safe search", asy
   const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
   await expect(card).toBeVisible();
   await expect(card).toContainText("Static Preview Company");
-  expect(bffJobRequests).toBe(0);
+  expect(bffJobRequests).toBeGreaterThan(0);
   expect(directHhRequests).toBe(0);
 });

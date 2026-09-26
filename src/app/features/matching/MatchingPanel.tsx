@@ -6,9 +6,9 @@ import { searchJobs } from "../search/searchService";
 import { buildAiPackage, buildPrompt } from "../../lib/aiPackage";
 import { buildMatchingRequest, sortByProfileMatch, type MatchAnalysis } from "./matchingService";
 
-interface Props { profile: CareerProfile; config: Config; }
+interface Props { profile: CareerProfile; config: Config; onOpenApplication: (job: SearchResult) => void; }
 
-export function MatchingPanel({ profile, config }: Props) {
+export function MatchingPanel({ profile, config, onOpenApplication }: Props) {
   const [jobs, setJobs] = useState<Array<{ job: SearchResult; analysis: MatchAnalysis }>>([]);
   const [selected, setSelected] = useState<SearchResult | null>(null);
   const [apiKey, setApiKey] = useState("");
@@ -97,7 +97,7 @@ export function MatchingPanel({ profile, config }: Props) {
             <button type="button" disabled={!apiKey || busy} onClick={() => void analyzeWithGemini()} className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-4 py-2.5 text-sm text-primary-foreground disabled:opacity-50"><Bot size={15} /> {busy ? "Анализ…" : "Глубокий AI-анализ"}</button>
           </div>
           {aiResult && <div className="mt-4 rounded-2xl border border-border bg-background p-4 whitespace-pre-wrap text-sm leading-6">{aiResult}</div>}
-          <a href={selected.url} target="_blank" rel="noreferrer" className="inline-block mt-4 text-sm text-primary hover:underline">Открыть вакансию →</a>
+          <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={() => onOpenApplication(selected)} className="inline-flex items-center rounded-xl bg-primary px-4 py-2.5 text-sm text-primary-foreground">Подготовить отклик</button><a href={selected.url} target="_blank" rel="noreferrer" className="inline-flex items-center rounded-xl border border-border px-4 py-2.5 text-sm text-primary hover:underline">Открыть вакансию →</a></div>
         </section>
       )}
     </div>
