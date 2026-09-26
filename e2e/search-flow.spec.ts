@@ -93,7 +93,8 @@ test("critical job search flow works in a real browser", async ({ page }) => {
 
   await expect.poll(() => jobicyRequests).toBeGreaterThan(0);
   const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
-  console.log("E2E_RESULTS_BODY", (await page.locator("body").innerText()).slice(0, 4000));
+  const resultBody = await page.locator("body").innerText();
+  console.log("E2E_RESULT_STATUS", resultBody.includes("Найдено 0 вакансий") ? "ZERO" : resultBody.match(/Найдено\\s+\\d+\\s+вакансий/)?.[0] || "NO_COUNT", resultBody.includes("По этому запросу ничего не найдено") ? "EMPTY_STATE" : "");
   await expect(card).toBeVisible();
   await expect(card).toContainText("Example Product");
 
