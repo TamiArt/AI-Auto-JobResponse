@@ -68,6 +68,7 @@ export function normalizeArbeitnowPayload(payload) {
     const jobTypes = Array.isArray(job?.job_types) ? job.job_types.map(text).filter(Boolean) : [];
     return {
       id: `arbeitnow-${slug || url}`,
+      source: "arbeitnow",
       title,
       company: text(job?.company_name) || "Компания не указана",
       salary: salaryFromArbeitnow(job),
