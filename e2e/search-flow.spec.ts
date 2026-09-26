@@ -34,10 +34,9 @@ async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
       body: JSON.stringify({ ok: true }),
     }),
   );
-  await page.route("**/api/jobs*", async (route) => {
+  await page.route(/\/api\/jobs(?:\/.*|\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
     const source = url.searchParams.get("source");
-    console.log("E2E_SOURCE_REQUEST", source, route.request().url());
     const body = source === "jobicy"
       ? jobicyPayload
       : source === "hh"
@@ -70,7 +69,6 @@ async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
 }
 
 test("critical job search flow works in a real browser", async ({ page }) => {
-  page.on("console", (message) => console.log("PAGE_CONSOLE", message.text()));
   let jobicyRequests = 0;
   await mockJobSources(page, () => { jobicyRequests += 1; });
   await page.goto("/");
@@ -94,8 +92,6 @@ test("critical job search flow works in a real browser", async ({ page }) => {
 
   await expect.poll(() => jobicyRequests).toBeGreaterThan(0);
   const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
-  const resultBody = await page.locator("body").innerText();
-  console.log("E2E_RESULT_STATUS", resultBody.includes("Найдено 0 вакансий") ? "ZERO" : resultBody.match(/Найдено\\s+\\d+\\s+вакансий/)?.[0] || "NO_COUNT", resultBody.includes("По этому запросу ничего не найдено") ? "EMPTY_STATE" : "");
   await expect(card).toBeVisible();
   await expect(card).toContainText("Example Product");
 
