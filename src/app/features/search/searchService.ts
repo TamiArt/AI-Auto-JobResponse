@@ -1,7 +1,7 @@
 import type { EmploymentTypeFilter, ExperienceFilter, SalaryCurrency, WorkModeFilter } from "../../domain/types";
 import { isSearchResult, mergeSearchResults as mergeContractResults } from "./searchContract.js";
 import { buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy.js";
-import { applySearchFilters, inferEmploymentType, inferWorkMode, matchesExperience, normalizeSalary } from "./searchFilters.js";
+import { applySearchFilters, inferEmploymentType, inferWorkMode, matchesExperience, matchesQuery, normalizeSalary } from "./searchFilters.js";
 
 export type AtsJobSource = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "recruitee" | "workable";
 export type FeedJobSource = "trudvsem" | "remoteok" | "weworkremotely" | "remotive" | "jobicy";
