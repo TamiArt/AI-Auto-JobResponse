@@ -219,10 +219,11 @@ async function handleTrudvsemView(response, url) {
 
 async function handleApi(request, response, url) {
   if (request.method !== "GET") return sendJson(response, 405, { error: "method_not_allowed" });
-  if (url.pathname === "/api/health") return sendJson(response, 200, { ok: true, sources: ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "ats"] });
+  if (url.pathname === "/api/health") return sendJson(response, 200, { ok: true, sources: ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats", "telegram"] });
   if (url.pathname === "/api/status") return sendJson(response, 200, createRuntimeStatus({ feedCache, atsCache, upstreamTimeoutMs: UPSTREAM_TIMEOUT_MS, atsConcurrency: ATS_CONCURRENCY }));
   if (url.pathname === "/api/jobs/trudvsem-view") return handleTrudvsemView(response, url);
-  if (url.pathname === "/api/jobs/hh") {
+  const source = url.pathname === "/api/jobs" ? url.searchParams.get("source") : null;
+  if (url.pathname === "/api/jobs/hh" || source === "hh") {
     try {
       const result = await fetchHh(url);
       return sendJson(response, result.status, result.body);
@@ -231,11 +232,12 @@ async function handleApi(request, response, url) {
       return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
     }
   }
-  if (url.pathname === "/api/jobs/remoteok") return handlePublicFeed(response, url, fetchRemoteOk);
-  if (url.pathname === "/api/jobs/weworkremotely") return handlePublicFeed(response, url, fetchWwr);
-  if (url.pathname === "/api/jobs/remotive") return handlePublicFeed(response, url, fetchRemotive);
-  if (url.pathname === "/api/jobs/jobicy") return handlePublicFeed(response, url, fetchJobicy);
-  if (url.pathname === "/api/jobs/ats") return handlePublicFeed(response, url, fetchAts);
+  if (url.pathname === "/api/jobs/remoteok" || source === "remoteok") return source ? handlePublicFeed(response, url, (query) => fetchNormalizedFeed({ key: "remoteok", cacheMs: STANDARD_FEED_CACHE_MS, query, loader: async () => normalizeRemoteOkPayload(await fetchWithTimeout(REMOTE_OK_API, { headers: { "User-Agent": "HuntPulse/0.1 (github.com/TamiArt/AI-Auto-JobResponse)" } })) })) : handlePublicFeed(response, url, fetchRemoteOk);
+  if (url.pathname === "/api/jobs/weworkremotely" || source === "weworkremotely") return source ? handlePublicFeed(response, url, fetchWwr) : handlePublicFeed(response, url, fetchWwr);
+  if (url.pathname === "/api/jobs/remotive" || source === "remotive") return handlePublicFeed(response, url, fetchRemotive);
+  if (url.pathname === "/api/jobs/jobicy" || source === "jobicy") return handlePublicFeed(response, url, fetchJobicy);
+  if (url.pathname === "/api/jobs/ats" || source === "ats") return handlePublicFeed(response, url, fetchAts);
+  if (source === "arbeitnow") return sendJson(response, 404, { error: "unsupported_source_in_local_server" });
   if (url.pathname !== "/api/jobs/trudvsem") return sendJson(response, 404, { error: "not_found" });
 
   const validation = validateTrudvsemRequest(url.searchParams.get("q"), url.searchParams.get("offset"));
