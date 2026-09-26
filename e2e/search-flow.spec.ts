@@ -37,7 +37,7 @@ async function mockJobSources(page: Page, onJobicyRequest?: () => void) {
   await page.route("**/api/jobs*", async (route) => {
     const url = new URL(route.request().url());
     const source = url.searchParams.get("source");
-    if (source === "jobicy") onJobicyRequest?.();
+    if (source === "jobicy") { onJobicyRequest?.(); console.log("E2E_JOBICY_REQUEST", route.request().url(), JSON.stringify(body)); }
     const body = source === "jobicy"
       ? jobicyPayload
       : source === "hh"
@@ -92,6 +92,7 @@ test("critical job search flow works in a real browser", async ({ page }) => {
 
   await expect.poll(() => jobicyRequests).toBeGreaterThan(0);
   const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
+  console.log("E2E_RESULTS_BODY", (await page.locator("body").innerText()).slice(0, 4000));
   await expect(card).toBeVisible();
   await expect(card).toContainText("Example Product");
 
