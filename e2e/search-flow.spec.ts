@@ -167,6 +167,7 @@ test("static preview never calls HH directly and keeps browser-safe search", asy
   );
 
   await page.goto("/");
+  await page.locator("label").filter({ hasText: "Регион" }).getByRole("combobox").selectOption("0");
   await page.getByPlaceholder("QA-инженер, дизайнер, разработчик…").fill(TEST_QUERY);
   await page.getByRole("button", { name: "Найти", exact: true }).click();
 
