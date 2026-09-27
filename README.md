@@ -62,7 +62,8 @@ ATS registry содержит 34 публичных employer boards и расш�
 - `/api/jobs/weworkremotely`;
 - `/api/jobs/remotive`;
 - `/api/jobs/jobicy`;
-- `/api/jobs/ats`;\n- `/api/telegram/auth` — server-side validation of Telegram Mini App `initData`.
+- `/api/jobs/ats`;
+- `/api/telegram/auth` — server-side validation of Telegram Mini App `initData`.
 
 ### Source-level snapshot cache
 
@@ -143,7 +144,8 @@ A feature is considered complete only when its implementation, tests, CI and doc
 - Marking a backlog feature as implemented when it is only a placeholder.
 - Adding a mandatory paid API for basic job search.
 - Large unrelated refactors while fixing a production bug.
-- Committing generated/broken source with literal escaped newlines such as `\\n` where a real line break is required.
+- Committing generated/broken source with literal escaped newlines such as `\
+` where a real line break is required.
 
 ### Verification rule for every change
 
@@ -167,7 +169,8 @@ Every meaningful product/architecture change must update the roadmap when it cha
 
 Every future agent must read both files before making architectural changes.
 
-## Надёжность\n
+## Надёжность
+
 - независимые adapters + `Promise.allSettled`;
 - capability-check `/api/health`;
 - HH вызывается через server-side BFF, а не напрямую из браузера;
@@ -175,7 +178,8 @@ Every future agent must read both files before making architectural changes.
 - graceful degradation при частичном отказе источников;
 - source-level CDN snapshots для Vercel и memory cache для self-hosted BFF;
 - security headers на Node BFF и Vercel;
-- `/api/status` не опрашивает внешние API и не расходует их лимиты;\n- Telegram webhook требует `TELEGRAM_WEBHOOK_SECRET`, а Mini App identity не принимается из `initDataUnsafe` без серверной HMAC-проверки;
+- `/api/status` не опрашивает внешние API и не расходует их лимиты;
+- Telegram webhook требует `TELEGRAM_WEBHOOK_SECRET`, а Mini App identity не принимается из `initDataUnsafe` без серверной HMAC-проверки;
 - лимит 800 строк проверяется для кодовых директорий и build/test-конфигов.
 
 ## Отложенные функции
