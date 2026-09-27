@@ -7,7 +7,16 @@ export const SNAPSHOT_BFF_SOURCES = Object.freeze([
   "ats",
 ]);
 
-export const AUTOMATIC_FIRST_PAGE_SOURCES = SNAPSHOT_BFF_SOURCES;
+// Keep the automatic first-page policy as a distinct exported contract.
+// Do not derive this name implicitly in consumers: CI/typecheck must see the symbol directly.
+export const AUTOMATIC_FIRST_PAGE_SOURCES = Object.freeze([
+  "remoteok",
+  "weworkremotely",
+  "remotive",
+  "jobicy",
+  "arbeitnow",
+  "ats",
+]);
 
 const SNAPSHOT_SET = new Set(SNAPSHOT_BFF_SOURCES);
 
