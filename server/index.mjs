@@ -23,17 +23,17 @@ const ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const DIST_DIR = join(ROOT, "dist");
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || "0.0.0.0";
-const UPSTREAM_TIMEOUT_MS = 12_000;
+const UPSTREAM_TIMEOUT_MS = 30_000;
 const STANDARD_FEED_CACHE_MS = 10 * 60 * 1000;
 const JOBICY_CACHE_MS = 60 * 60 * 1000;
 const REMOTIVE_CACHE_MS = 6 * 60 * 60 * 1000;
-const TRUDVSEM_API = "http://opendata.trudvsem.ru/api/v1/vacancies";
+const TRUDVSEM_API = "https://opendata.trudvsem.ru/api/v1/vacancies";
 const REMOTE_OK_API = "https://remoteok.com/api";
 const WWR_RSS = "https://weworkremotely.com/remote-jobs.rss";
 const REMOTIVE_API = "https://remotive.com/api/remote-jobs";
 const JOBICY_API = "https://jobicy.com/api/v2/remote-jobs?count=100";
 const ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api";
-const TELEGRAM_TIMEOUT_MS = 12_000;
+const TELEGRAM_TIMEOUT_MS = 15_000;
 const feedCache = new Map();
 const atsCache = new Map();
 
@@ -112,8 +112,8 @@ async function mapConcurrent(items, limit, worker) {
 }
 
 async function fetchTrudvsem(query, offset) {
-  const params = new URLSearchParams({ text: query, offset: String(offset), limit: "100" });
-  return normalizeTrudvsemPayload(await fetchWithTimeout(`${TRUDVSEM_API}?${params}`), offset);
+  const params = new URLSearchParams({ text: query, offset: String(offset), limit: "30" });
+  return normalizeTrudvsemPayload(await fetchWithTimeout(`${TRUDVSEM_API}?${params}`, { headers: { "User-Agent": "JOBOS/1.0 (job search application)", Accept: "application/json" } }), offset);
 }
 
 async function fetchTrudvsemView(company, id) {
