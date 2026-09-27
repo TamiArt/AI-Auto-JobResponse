@@ -80,3 +80,20 @@ test("experience filters do not treat unknown experience as a match", () => {
   assert.equal(matchesExperience("between3And6", "3–6 лет"), true);
   assert.equal(matchesExperience("moreThan6", "Более 6 лет"), true);
 });
+
+
+test("unknown work mode never masquerades as onsite", () => {
+  const unknown = { ...job, location: "Москва", title: "QA Engineer", description: "Тестирование продукта", tags: [] };
+  assert.equal(matchesWorkMode({ ...baseRequest, workMode: "onsite" }, unknown), false);
+  assert.equal(matchesWorkMode({ ...baseRequest, workMode: "remote" }, { ...unknown, location: "Remote" }), true);
+  assert.equal(matchesWorkMode({ ...baseRequest, workMode: "hybrid" }, { ...unknown, description: "Hybrid format" }), true);
+  assert.equal(matchesWorkMode({ ...baseRequest, workMode: "onsite" }, { ...unknown, description: "Работа в офисе" }), true);
+});
+
+test("unknown employment type never masquerades as full time", () => {
+  const unknown = { ...job, title: "QA Engineer", description: "Тестирование продукта", tags: [] };
+  assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "fullTime" }, unknown), false);
+  assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "fullTime" }, { ...unknown, description: "Полная занятость" }), true);
+  assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "contract" }, { ...unknown, description: "Проектная работа по контракту" }), true);
+  assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "internship" }, { ...unknown, title: "QA Intern" }), true);
+});
