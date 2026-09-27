@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import type { AiTask, CareerProfile } from "../../domain/types";
 import { buildAiPackage, buildPrompt } from "../../lib/aiPackage";
-import { loadAiWorkspaceItems, saveAiWorkspaceItem, type AiWorkspaceItem } from "./aiWorkspaceStorage";
+import { loadAiWorkspaceItems, saveAiWorkspaceItem } from "./aiWorkspaceStorage.js";
 
 interface Props { profile: CareerProfile }
 
@@ -45,7 +45,7 @@ export function AiPanel({ profile }: Props) {
   const [provider, setProvider] = useState<ExternalProvider>("gemini");
   const [importText, setImportText] = useState("");
   const [importKind, setImportKind] = useState<ImportedKind>("other");
-  const [savedItems, setSavedItems] = useState<AiWorkspaceItem[]>(loadAiWorkspaceItems);
+  const [savedItems, setSavedItems] = useState(loadAiWorkspaceItems);
 
   const prompt = useMemo(() => buildPrompt(buildAiPackage(task, profile, { title, company, description, url })), [task, profile, title, company, description, url]);
 
@@ -75,7 +75,7 @@ export function AiPanel({ profile }: Props) {
   const saveImported = () => {
     const text = importText.trim();
     if (!text) return;
-    const item = { id: crypto.randomUUID(), kind: importKind, text, createdAt: new Date().toISOString() } satisfies AiWorkspaceItem;
+    const item = { id: crypto.randomUUID(), kind: importKind, text, createdAt: new Date().toISOString() };
     saveAiWorkspaceItem(item);
     setSavedItems(loadAiWorkspaceItems());
     setImportText("");

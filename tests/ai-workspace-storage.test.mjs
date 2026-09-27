@@ -1,10 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import {
-  clearAiWorkspaceItems,
-  loadAiWorkspaceItems,
-  saveAiWorkspaceItem,
-} from "../src/app/features/ai/aiWorkspaceStorage.ts";
+import { clearAiWorkspaceItems, loadAiWorkspaceItems, saveAiWorkspaceItem } from "../src/app/features/ai/aiWorkspaceStorage.js";
 
 function createStorage() {
   const data = new Map();
