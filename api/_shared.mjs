@@ -22,7 +22,7 @@ const API_URLS = {
   arbeitnow: "https://www.arbeitnow.com/api/job-board-api",
 };
 
-export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
+export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats", "telegram"];
 export const SNAPSHOT_SOURCES = ["remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
 const SNAPSHOT_SOURCE_SET = new Set(SNAPSHOT_SOURCES);
 export const CACHE_SECONDS = {

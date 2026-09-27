@@ -8,14 +8,20 @@ import {
 
 test("snapshot source URLs never depend on the user query", () => {
   for (const source of SNAPSHOT_BFF_SOURCES) {
-    assert.equal(buildBffSourcePath(source, "QA инженер"), `/api/jobs/${source}`);
-    assert.equal(buildBffSourcePath(source, "Java developer"), `/api/jobs/${source}`);
+    const url = new URL(`https://example.test${buildBffSourcePath(source, "QA инженер")}`);
+    assert.equal(url.pathname, "/api/jobs");
+    assert.equal(url.searchParams.get("source"), source);
+    assert.equal(url.searchParams.has("q"), false);
     assert.equal(isSnapshotBffSource(source), true);
   }
 });
 
-test("query-dependent BFF sources keep their query", () => {
-  const path = buildBffSourcePath("trudvsem", "QA инженер");
-  assert.match(path, /^\/api\/jobs\/trudvsem\?q=/);
+test("query-dependent BFF sources keep their query without relying on URL encoding", () => {
+  const query = "QA инженер";
+  const path = buildBffSourcePath("trudvsem", query);
+  const url = new URL(`https://example.test${path}`);
+  assert.equal(url.pathname, "/api/jobs");
+  assert.equal(url.searchParams.get("source"), "trudvsem");
+  assert.equal(url.searchParams.get("q"), query);
   assert.equal(isSnapshotBffSource("trudvsem"), false);
 });

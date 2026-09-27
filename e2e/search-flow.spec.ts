@@ -10,7 +10,7 @@ const jobicyPayload = {
     title: "QA Engineer",
     company: "Example Product",
     salary: "120000 USD",
-    location: "Remote",
+    location: "Москва",
     experience: "Опыт не указан",
     publishedTimestamp: 1_787_050_800_000,
     url: TEST_JOB_URL,
@@ -26,16 +26,23 @@ const jobicyPayload = {
   },
 };
 
-async function mockJobSources(page: Page) {
-  await page.route("**/api/jobs*", async (route) => {
+async function mockJobSources(page: Page, onJobicyRequest?: (source: string | null) => void) {
+  await page.route("**/api/health**", (route) =>
+    route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({ ok: true }),
+    }),
+  );
+  await page.route(/\/api\/jobs(?:\/.*|\?.*)?$/, async (route) => {
     const url = new URL(route.request().url());
-    const source = url.searchParams.get("source");
+    const source = url.searchParams.get("source") || (url.pathname.match(/\/api\/jobs\/(hh|trudvsem)$/)?.[1] ?? null);
     const body = source === "jobicy"
       ? jobicyPayload
       : source === "hh"
         ? { items: [], page: 0, pages: 0 }
         : emptyPayload;
-
+    onJobicyRequest?.(source);
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -61,14 +68,30 @@ async function mockJobSources(page: Page) {
 }
 
 test("critical job search flow works in a real browser", async ({ page }) => {
-  await mockJobSources(page);
+  let jobicyRequests = 0;
+  const requestedSources = new Set<string>();
+  await mockJobSources(page, (source) => { if (source) requestedSources.add(source); if (source === "jobicy") jobicyRequests += 1; });
   await page.goto("/");
 
   const searchInput = page.getByPlaceholder("QA-инженер, дизайнер, разработчик…");
   await expect(page.getByRole("heading", { name: "Найти работу" })).toBeVisible();
+  const regionSelect = page.locator("label").filter({ hasText: "Регион" }).getByRole("combobox");
+  const workModeSelect = page.locator("label").filter({ hasText: "Формат работы" }).getByRole("combobox");
+  const employmentSelect = page.locator("label").filter({ hasText: "Тип занятости" }).getByRole("combobox");
+  const experienceSelect = page.locator("label").filter({ hasText: "Опыт" }).getByRole("combobox");
+  await regionSelect.selectOption("0");
+  await workModeSelect.selectOption("any");
+  await employmentSelect.selectOption("any");
+  await experienceSelect.selectOption("any");
+  await expect(regionSelect).toHaveValue("0");
+  await expect(workModeSelect).toHaveValue("any");
+  await expect(employmentSelect).toHaveValue("any");
+  await expect(experienceSelect).toHaveValue("any");
   await searchInput.fill(TEST_QUERY);
   await page.getByRole("button", { name: "Найти", exact: true }).click();
 
+  await expect.poll(() => jobicyRequests).toBeGreaterThan(0);
+  expect([...requestedSources]).toEqual(expect.arrayContaining(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"]));
   const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
   await expect(card).toBeVisible();
   await expect(card).toContainText("Example Product");
@@ -111,7 +134,7 @@ test("static preview never calls HH directly and keeps browser-safe search", asy
     }),
   );
 
-  await page.route("**/api/jobs*", async (route) => {
+  await page.route(/\/api\/jobs(?:\/.*|\?.*)?$/, async (route) => {
     bffJobRequests += 1;
     const url = new URL(route.request().url());
     const source = url.searchParams.get("source");
@@ -159,6 +182,7 @@ test("static preview never calls HH directly and keeps browser-safe search", asy
   );
 
   await page.goto("/");
+  await page.locator("label").filter({ hasText: "Регион" }).getByRole("combobox").selectOption("0");
   await page.getByPlaceholder("QA-инженер, дизайнер, разработчик…").fill(TEST_QUERY);
   await page.getByRole("button", { name: "Найти", exact: true }).click();
 
