@@ -24,7 +24,7 @@ export function canonicalUrl(value) {
   try {
     const url = new URL(String(value));
     url.hash = "";
-    url.pathname = url.pathname.replace(/\\/+$/, "") || "/";
+    url.pathname = url.pathname.replace(/\/+$/, "") || "/";
     url.hostname = url.hostname.toLocaleLowerCase();
     if ((url.protocol === "https:" && url.port === "443") || (url.protocol === "http:" && url.port === "80")) url.port = "";
     return url.toString();
