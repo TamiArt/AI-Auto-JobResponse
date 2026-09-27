@@ -59,7 +59,7 @@ try {
   if (status.cache?.feeds?.entries !== 0 || status.cache?.ats?.entries !== 0) {
     throw new Error("Fresh server status should start with empty caches");
   }
-  if (status.limits?.upstreamTimeoutMs !== 12000 || status.limits?.atsConcurrency !== 4) {
+  if (status.limits?.upstreamTimeoutMs !== 30_000 || status.limits?.atsConcurrency !== 4) {
     throw new Error("Invalid /api/status limits");
   }
 
