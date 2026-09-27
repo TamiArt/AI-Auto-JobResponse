@@ -107,3 +107,13 @@ test("experience range matching supports hyphen, en dash and word ranges without
   assert.equal(matchesExperience("between3And6", "3 to 6 years"), true);
   assert.equal(matchesExperience("between3And6", "7-10 years"), false);
 });
+
+
+test("salary normalization preserves decimal salaries and parses ranges", () => {
+  assert.equal(normalizeSalary("$30/hour").min, 30);
+  assert.equal(normalizeSalary("$30/hour").period, "hour");
+  assert.equal(normalizeSalary("€50k–€70k per year").min, 50);
+  assert.equal(normalizeSalary("€50k–€70k per year").max, 70);
+  assert.equal(normalizeSalary("£45,000 - £55,000 per year").min, 45000);
+  assert.equal(normalizeSalary("£45,000 - £55,000 per year").max, 55000);
+});
