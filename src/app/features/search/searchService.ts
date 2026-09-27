@@ -1,6 +1,6 @@
 import type { EmploymentType, EmploymentTypeFilter, ExperienceFilter, SalaryCurrency, WorkMode, WorkModeFilter } from "../../domain/types";
 import { isSearchResult, mergeSearchResults as mergeContractResults } from "./searchContract.js";
-import { buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy.js";
+import { AUTOMATIC_FIRST_PAGE_SOURCES, buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy.js";
 import { applySearchFilters, inferEmploymentType, inferWorkMode, matchesExperience, matchesQuery, normalizeSalary } from "./searchFilters.js";
 import { buildHhSearchParams } from "./hhRequestPolicy.js";
 
@@ -43,7 +43,6 @@ interface AdapterResult { results: SearchResult[]; nextHhPage: number | null; re
 const REQUEST_TIMEOUT_MS = 35_000;
 const CAPABILITY_TIMEOUT_MS = 1_500;
 const ATS_SOURCES = new Set<AtsJobSource>(["greenhouse", "lever", "ashby", "smartrecruiters", "recruitee", "workable"]);
-const AUTOMATIC_FIRST_PAGE_SOURCES: SearchSource[] = ["trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
 const BACKEND_REQUIRED_SOURCES = new Set<SearchSource>(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats", "telegram"]);
 let backendCapability: Promise<boolean> | null = null;
 
