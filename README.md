@@ -62,7 +62,7 @@ ATS registry содержит 34 публичных employer boards и расш�
 - `/api/jobs/weworkremotely`;
 - `/api/jobs/remotive`;
 - `/api/jobs/jobicy`;
-- `/api/jobs/ats`.
+- `/api/jobs/ats`;\n- `/api/telegram/auth` — server-side validation of Telegram Mini App `initData`.
 
 ### Source-level snapshot cache
 
@@ -87,8 +87,7 @@ HH и «Работа России» остаются query-dependent API, пот
 
 Для большинства источников это оригинальное объявление. Для «Работа России», если публичная карточка портала нестабильна, используется `/api/jobs/trudvsem-view`, который загружает данные из официального Open Data API; ссылка на оригинал сохраняется внутри viewer.
 
-## Надёжность
-
+## Production audit status\n\nНа ветке `feature/jobos-application-audit` production-проверка идёт атомарными изменениями с contract tests. Уже закреплены: строгий normalized `SearchResult` contract с обязательными `id/title/company/url`, дедупликация URL с удалением common tracking-параметров, независимое выполнение источников через `Promise.allSettled`, HH pagination до 2000 результатов upstream, currency-aware salary filtering без фиктивной конвертации, remote/hybrid/office filters, локальное сохранение AI Workspace импортов, Preview → explicit confirmation → manual application flow и Telegram Mini App `initData`/webhook-secret validation.\n\nНезавершённые проверки не считаются выполненными до прохождения CI `npm run check:full` и отдельной проверки реальных upstream payloads.\n\n## Надёжность\n
 - независимые adapters + `Promise.allSettled`;
 - capability-check `/api/health`;
 - HH вызывается через server-side BFF, а не напрямую из браузера;
@@ -96,7 +95,7 @@ HH и «Работа России» остаются query-dependent API, пот
 - graceful degradation при частичном отказе источников;
 - source-level CDN snapshots для Vercel и memory cache для self-hosted BFF;
 - security headers на Node BFF и Vercel;
-- `/api/status` не опрашивает внешние API и не расходует их лимиты;
+- `/api/status` не опрашивает внешние API и не расходует их лимиты;\n- Telegram webhook требует `TELEGRAM_WEBHOOK_SECRET`, а Mini App identity не принимается из `initDataUnsafe` без серверной HMAC-проверки;
 - лимит 800 строк проверяется для кодовых директорий и build/test-конфигов.
 
 ## Отложенные функции
