@@ -36,5 +36,8 @@ export function buildHhUrl(validation) {
 }
 
 export function hhHeaders() {
-  return { Accept: "application/json", "User-Agent": HH_USER_AGENT, "HH-User-Agent": HH_USER_AGENT };
+  const headers = { Accept: "application/json", "User-Agent": HH_USER_AGENT, "HH-User-Agent": HH_USER_AGENT };
+  const accessToken = String(process.env.HH_ACCESS_TOKEN || "").trim();
+  if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+  return headers;
 }
