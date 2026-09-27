@@ -97,3 +97,13 @@ test("unknown employment type never masquerades as full time", () => {
   assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "contract" }, { ...unknown, description: "Проектная работа по контракту" }), true);
   assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "internship" }, { ...unknown, title: "QA Intern" }), true);
 });
+
+
+test("experience range matching supports hyphen, en dash and word ranges without substring false positives", () => {
+  assert.equal(matchesExperience("between1And3", "3–6 лет"), false);
+  assert.equal(matchesExperience("between1And3", "1-3 years"), true);
+  assert.equal(matchesExperience("between1And3", "1 to 3 years"), true);
+  assert.equal(matchesExperience("between3And6", "3-6 years"), true);
+  assert.equal(matchesExperience("between3And6", "3 to 6 years"), true);
+  assert.equal(matchesExperience("between3And6", "7-10 years"), false);
+});
