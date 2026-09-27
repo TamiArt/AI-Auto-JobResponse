@@ -1,4 +1,4 @@
-import type { EmploymentTypeFilter, ExperienceFilter, SalaryCurrency, WorkModeFilter } from "../../domain/types";
+import type { EmploymentType, EmploymentTypeFilter, ExperienceFilter, SalaryCurrency, WorkMode, WorkModeFilter } from "../../domain/types";
 import { isSearchResult, mergeSearchResults as mergeContractResults } from "./searchContract.js";
 import { buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy.js";
 import { applySearchFilters, inferEmploymentType, inferWorkMode, matchesExperience, matchesQuery, normalizeSalary } from "./searchFilters.js";
@@ -17,7 +17,7 @@ export interface NormalizedSalary {
 }
 
 export interface SearchResult {
-  id: string; title: string; company: string; salary: string; location: string; experience: string; workMode?: WorkModeFilter; employmentType?: EmploymentTypeFilter;
+  id: string; title: string; company: string; salary: string; location: string; experience: string; workMode?: WorkMode; employmentType?: EmploymentType;
   publishedAt: string; publishedTimestamp: number; source: RealJobSource; url: string; tags: string[];
   description?: string; sourceUrl?: string; normalizedSalary?: NormalizedSalary;
 }
