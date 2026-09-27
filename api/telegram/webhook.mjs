@@ -1,5 +1,6 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const MINI_APP_URL = process.env.TELEGRAM_MINI_APP_URL || process.env.VERCEL_PROJECT_PRODUCTION_URL || "";
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
 async function telegram(method, body) {
   const response = await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/${method}`, {
@@ -12,7 +13,9 @@ async function telegram(method, body) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
-  if (!BOT_TOKEN || !MINI_APP_URL) return res.status(503).json({ error: "telegram_bot_not_configured" });
+  if (!BOT_TOKEN || !MINI_APP_URL || !WEBHOOK_SECRET) return res.status(503).json({ error: "telegram_bot_not_configured" });
+  const receivedSecret = req.headers["x-telegram-bot-api-secret-token"];
+  if (!validateTelegramWebhookSecret(receivedSecret, WEBHOOK_SECRET)) return res.status(401).json({ error: "unauthorized" });
 
   const message = req.body?.message;
   const chatId = message?.chat?.id;
@@ -20,11 +23,10 @@ export default async function handler(req, res) {
   if (!chatId) return res.status(200).json({ ok: true, ignored: true });
 
   if (text === "/start" || text === "/app") {
-    const url = MINI_APP_URL;
     await telegram("sendMessage", {
       chat_id: chatId,
       text: "JOBOS — твой Career Operating System. Открой приложение, чтобы искать вакансии, вести Career Graph и анализировать подходящие предложения.",
-      reply_markup: { inline_keyboard: [[{ text: "Открыть JOBOS", web_app: { url } }]] },
+      reply_markup: { inline_keyboard: [[{ text: "Открыть JOBOS", web_app: { url: MINI_APP_URL } }]] },
     });
   } else if (text === "/help") {
     await telegram("sendMessage", { chat_id: chatId, text: "/start — открыть JOBOS\n/help — помощь" });
@@ -32,3 +34,5 @@ export default async function handler(req, res) {
 
   return res.status(200).json({ ok: true });
 }
+
+import { validateTelegramWebhookSecret } from "../../server/telegramSecurity.mjs";

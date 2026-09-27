@@ -1,6 +1,7 @@
 const BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 const MINI_APP_URL = process.env.TELEGRAM_MINI_APP_URL || "";
 const SETUP_SECRET = process.env.TELEGRAM_SETUP_SECRET;
+const WEBHOOK_SECRET = process.env.TELEGRAM_WEBHOOK_SECRET;
 
 async function telegram(method, body) {
   const response = await fetch("https://api.telegram.org/bot" + BOT_TOKEN + "/" + method, {
@@ -15,12 +16,12 @@ async function telegram(method, body) {
 
 export default async function handler(req, res) {
   if (req.method !== "POST") return res.status(405).json({ error: "method_not_allowed" });
-  if (!BOT_TOKEN || !MINI_APP_URL || !SETUP_SECRET) return res.status(503).json({ error: "telegram_setup_not_configured" });
+  if (!BOT_TOKEN || !MINI_APP_URL || !SETUP_SECRET || !WEBHOOK_SECRET) return res.status(503).json({ error: "telegram_setup_not_configured" });
   if (req.headers["x-telegram-setup-secret"] !== SETUP_SECRET) return res.status(401).json({ error: "unauthorized" });
 
   const origin = new URL(MINI_APP_URL).origin;
   const webhookUrl = origin + "/api/telegram/webhook";
-  await telegram("setWebhook", { url: webhookUrl, allowed_updates: ["message"] });
+  await telegram("setWebhook", { url: webhookUrl, secret_token: WEBHOOK_SECRET, allowed_updates: ["message"] });
   await telegram("setChatMenuButton", {
     menu_button: {
       type: "web_app",
