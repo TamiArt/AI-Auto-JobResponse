@@ -24,7 +24,9 @@ test("isSearchResult accepts the normalized adapter contract", () => {
 });
 
 test("isSearchResult rejects malformed or unsafe results", () => {
-  assert.equal(isSearchResult(result({ id: "" })), false);\n  assert.equal(isSearchResult(result({ company: "" })), false);\n  assert.equal(isSearchResult(result({ url: "https://" })), false);
+  assert.equal(isSearchResult(result({ id: "" })), false);
+  assert.equal(isSearchResult(result({ company: "" })), false);
+  assert.equal(isSearchResult(result({ url: "https://" })), false);
   assert.equal(isSearchResult(result({ publishedTimestamp: Number.NaN })), false);
   assert.equal(isSearchResult(result({ url: "javascript:alert(1)" })), false);
   assert.equal(isSearchResult(result({ tags: ["ok", 2] })), false);
@@ -48,7 +50,13 @@ test("mergeSearchResults deduplicates equivalent URL spellings", () => {
   assert.deepEqual(merged.map((item) => item.id), ["first"]);
 });
 
-test("mergeSearchResults ignores common tracking parameters when deduplicating URLs", () => {\n  const first = result({ id: "first", url: "https://example.test/vacancy/42?utm_source=telegram", publishedTimestamp: 20 });\n  const second = result({ id: "second", url: "https://example.test/vacancy/42?utm_source=hh", publishedTimestamp: 10 });\n  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first"]);\n});\n\ntest("mergeSearchResults keeps distinct vacancy URLs even when title and company match", () => {
+test("mergeSearchResults ignores common tracking parameters when deduplicating URLs", () => {
+  const first = result({ id: "first", url: "https://example.test/vacancy/42?utm_source=telegram", publishedTimestamp: 20 });
+  const second = result({ id: "second", url: "https://example.test/vacancy/42?utm_source=hh", publishedTimestamp: 10 });
+  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first"]);
+});
+
+test("mergeSearchResults keeps distinct vacancy URLs even when title and company match", () => {
   const first = result({ id: "first", url: "https://example.test/vacancy/1" });
   const second = result({ id: "second", url: "https://example.test/vacancy/2" });
   assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first", "second"]);
