@@ -11,10 +11,10 @@ import {
 } from "../server/publicFeeds.mjs";
 import { buildAtsUrl, filterAtsResults, normalizeAtsPayload } from "../server/atsFeeds.mjs";
 import { ATS_CONCURRENCY, ATS_EMPLOYERS } from "../server/atsRegistry.mjs";
+import { UPSTREAM_TIMEOUT_MS } from "../server/runtimeConfig.mjs";
 
-const UPSTREAM_TIMEOUT_MS = 12_000;
 const API_URLS = {
-  trudvsem: "http://opendata.trudvsem.ru/api/v1/vacancies",
+  trudvsem: "https://opendata.trudvsem.ru/api/v1/vacancies",
   remoteok: "https://remoteok.com/api",
   weworkremotely: "https://weworkremotely.com/remote-jobs.rss",
   remotive: "https://remotive.com/api/remote-jobs",
