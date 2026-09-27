@@ -2,6 +2,14 @@ function normalizeText(value) {
   return String(value ?? "").toLocaleLowerCase("ru-RU").replace(/ё/g, "е").trim();
 }
 
+const WORK_MODE_SIGNALS = /remote|удален|удалён|дистанцион|work from home|wfh/;
+const HYBRID_SIGNALS = /hybrid|гибрид/;
+const EMPLOYMENT_SIGNALS = {
+  internship: /intern|стаж|trainee|практик/,
+  partTime: /part.?time|частич|неполн/,
+  contract: /contract|контракт|проектн|freelance|фриланс/,
+};
+
 export function matchesQuery(query, ...values) {
   const terms = normalizeText(query).split(/\s+/).filter(Boolean);
   const haystack = normalizeText(values.filter(Boolean).join(" "));
@@ -60,18 +68,18 @@ export function normalizeSalary(salary) {
 
 export function inferWorkMode(item) {
   const text = normalizeText([item.location, item.title, item.description, ...(item.tags || [])].join(" "));
-  if (/hybrid|гибрид/.test(text)) return "hybrid";
-  if (/remote|удален|удалён|дистанцион|work from home|wfh/.test(text)) return "remote";
-  return "onsite";
+  if (HYBRID_SIGNALS.test(text)) return "hybrid";
+  if (WORK_MODE_SIGNALS.test(text)) return "remote";
+  return "unknown";
 }
 
 export function matchesWorkMode(request, item) {
   if (!request.workMode || request.workMode === "any") return true;
-  if (item.workMode && item.workMode !== "any") return item.workMode === request.workMode;
+  if (item.workMode && item.workMode !== "any" && item.workMode !== "unknown") return item.workMode === request.workMode;
   const text = normalizeText([item.location, item.title, item.description, ...(item.tags || [])].join(" "));
-  if (request.workMode === "remote") return /remote|удален|удалён|дистанцион|work from home|wfh/.test(text);
-  if (request.workMode === "hybrid") return /hybrid|гибрид/.test(text);
-  return !/remote|удален|удалён|дистанцион|work from home|wfh|hybrid|гибрид/.test(text);
+  if (request.workMode === "remote") return WORK_MODE_SIGNALS.test(text);
+  if (request.workMode === "hybrid") return HYBRID_SIGNALS.test(text);
+  return !WORK_MODE_SIGNALS.test(text) && !HYBRID_SIGNALS.test(text) && /офис|office|onsite|on-site|in office|на месте/.test(text);
 }
 
 export function matchesLocation(request, item) {
@@ -82,20 +90,21 @@ export function matchesLocation(request, item) {
 
 export function inferEmploymentType(item) {
   const text = normalizeText([item.title, item.description, ...(item.tags || [])].join(" "));
-  if (/intern|стаж|trainee|практик/.test(text)) return "internship";
-  if (/part.?time|частич|неполн/.test(text)) return "partTime";
-  if (/contract|контракт|проектн|freelance|фриланс/.test(text)) return "contract";
-  return "fullTime";
+  if (EMPLOYMENT_SIGNALS.internship.test(text)) return "internship";
+  if (EMPLOYMENT_SIGNALS.partTime.test(text)) return "partTime";
+  if (EMPLOYMENT_SIGNALS.contract.test(text)) return "contract";
+  return "unknown";
 }
 
 export function matchesEmploymentType(request, item) {
   if (!request.employmentType || request.employmentType === "any") return true;
-  if (item.employmentType && item.employmentType !== "any") return item.employmentType === request.employmentType;
+  if (item.employmentType && item.employmentType !== "any" && item.employmentType !== "unknown") return item.employmentType === request.employmentType;
   const text = normalizeText([item.title, item.description, ...(item.tags || [])].join(" "));
-  if (request.employmentType === "internship") return /intern|стаж|trainee|практик/.test(text);
-  if (request.employmentType === "partTime") return /part.?time|частич|неполн/.test(text);
-  if (request.employmentType === "contract") return /contract|контракт|проектн|freelance|фриланс/.test(text);
-  return !/intern|стаж|trainee|практик|part.?time|частич|неполн|contract|контракт|проектн|freelance|фриланс/.test(text);
+  if (request.employmentType === "internship") return EMPLOYMENT_SIGNALS.internship.test(text);
+  if (request.employmentType === "partTime") return EMPLOYMENT_SIGNALS.partTime.test(text);
+  if (request.employmentType === "contract") return EMPLOYMENT_SIGNALS.contract.test(text);
+  return /full.?time|полная|полный день|full time/.test(text)
+    && !Object.values(EMPLOYMENT_SIGNALS).some((pattern) => pattern.test(text));
 }
 
 export function matchesSalary(request, salary, normalized) {
