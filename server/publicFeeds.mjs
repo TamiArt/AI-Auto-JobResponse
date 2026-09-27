@@ -158,8 +158,9 @@ export function normalizeJobicyPayload(payload) {
     if (!id || !title || !url) return null;
     const min = text(job.annualSalaryMin || job.salaryMin);
     const max = text(job.annualSalaryMax || job.salaryMax);
-    const currency = text(job.salaryCurrency || job.currency);
-    const salary = text(job.salary) || [min && `от ${min}`, max && `до ${max}`, currency].filter(Boolean).join(" ");
+    const currency = text(job.salaryCurrency || job.currency).toUpperCase();
+    const period = text(job.salaryPeriod || job.salary_period);
+    const salary = text(job.salary) || [min && `от ${min}`, max && `до ${max}`, currency, period].filter(Boolean).join(" ");
     return {
       id: `jobicy-${id}`,
       title,
