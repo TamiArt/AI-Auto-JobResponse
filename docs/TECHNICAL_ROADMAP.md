@@ -92,6 +92,8 @@ Telegram является отдельным источником ваканси
 
 ## Search correctness
 
+- [x] Jobicy salary normalizer preserves numeric bounds, ISO currency and `salaryPeriod` metadata from the public Jobs API.
+
 - [x] HH salary upstream narrowing removed: JOBOS uses HH `label=with_salary` only when salary filtering is active and applies the authoritative exact range/currency filter after normalization.
 
 - [ ] Ввести source capabilities: `supportsRegion`, `supportsSalary`, `supportsRemote`, `supportsPagination`, `searchMode`, currency semantics.
