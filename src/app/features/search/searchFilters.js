@@ -45,8 +45,13 @@ function parseSalaryNumber(raw) {
 export function normalizeSalary(salary) {
   const originalText = salary || "Зарплата не указана";
   const text = normalizeText(originalText);
-  const numbers = Array.from(text.matchAll(/\d[\d\s.,]*/g))
-    .map((match) => parseSalaryNumber(match[0]))
+  const numbers = Array.from(text.matchAll(/(\d[\d\s.,]*)(k|m)?/gi))
+    .map((match) => {
+      const value = parseSalaryNumber(match[1]);
+      if (value === null) return null;
+      const suffix = String(match[2] || "").toLocaleLowerCase("en-US");
+      return suffix === "k" ? value * 1_000 : suffix === "m" ? value * 1_000_000 : value;
+    })
     .filter((value) => value !== null);
   const currency = /\b(rub|руб|₽|rur)\b/.test(text) ? "RUB"
     : /\b(usd|долл)\b|\$/.test(text) ? "USD"
@@ -125,8 +130,8 @@ export function matchesExperience(filter, value) {
   const text = normalizeText(value);
   if (!text || text.includes("не указан")) return false;
   if (filter === "noExperience") return /без опыта|нет опыта|no experience|entry level|intern/.test(text);
-  if (filter === "between1And3") return /(?:1\s*(?:-|–|—|to)\s*3|1\s*год|2\s*год|3\s*год|one|two|three)/.test(text);
-  if (filter === "between3And6") return /(?:3\s*(?:-|–|—|to)\s*6|3\s*год|4\s*год|5\s*лет|6\s*лет|three|four|five|six)/.test(text);
+  if (filter === "between1And3") return /(?:1\s*(?:-|–|—|to)\s*3|1\s*(?:год|года|year|years)|2\s*(?:год|года|лет|year|years)|3\s*(?:год|года|лет|year|years)|\bone\b|\btwo\b|\bthree\b)/.test(text);
+  if (filter === "between3And6") return /(?:3\s*(?:-|–|—|to)\s*6|3\s*(?:год|года|лет|year|years)|4\s*(?:год|года|лет|year|years)|5\s*(?:лет|year|years)|6\s*(?:лет|year|years)|\bthree\b|\bfour\b|\bfive\b|\bsix\b)/.test(text);
   return /более 6|6\+|7 лет|8 лет|9 лет|10 лет|more than 6|senior/.test(text);
 }
 
