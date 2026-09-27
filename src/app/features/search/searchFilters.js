@@ -125,8 +125,8 @@ export function matchesExperience(filter, value) {
   const text = normalizeText(value);
   if (!text || text.includes("не указан")) return false;
   if (filter === "noExperience") return /без опыта|нет опыта|no experience|entry level|intern/.test(text);
-  if (filter === "between1And3") return /1.?3|1 год|2 год|3 год|one|two|three/.test(text);
-  if (filter === "between3And6") return /3.?6|4 год|5 лет|6 лет|three|four|five|six/.test(text);
+  if (filter === "between1And3") return /(?:1\s*(?:-|–|—|to)\s*3|1\s*год|2\s*год|3\s*год|one|two|three)/.test(text);
+  if (filter === "between3And6") return /(?:3\s*(?:-|–|—|to)\s*6|3\s*год|4\s*год|5\s*лет|6\s*лет|three|four|five|six)/.test(text);
   return /более 6|6\+|7 лет|8 лет|9 лет|10 лет|more than 6|senior/.test(text);
 }
 
