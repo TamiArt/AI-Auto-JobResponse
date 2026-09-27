@@ -16,6 +16,7 @@ import {
 } from "./publicFeeds.mjs";
 import { buildAtsUrl, filterAtsResults, normalizeAtsPayload } from "./atsFeeds.mjs";
 import { ATS_CACHE_MS, ATS_CONCURRENCY, ATS_EMPLOYERS } from "./atsRegistry.mjs";
+import { UPSTREAM_TIMEOUT_MS } from "./runtimeConfig.mjs";
 import { createRuntimeStatus, withSecurityHeaders } from "./httpPolicy.mjs";
 import { filterTelegramResults, normalizeTelegramHtml, validateTelegramRequest } from "./telegramPublic.mjs";
 
@@ -23,7 +24,6 @@ const ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const DIST_DIR = join(ROOT, "dist");
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || "0.0.0.0";
-const UPSTREAM_TIMEOUT_MS = 30_000;
 const STANDARD_FEED_CACHE_MS = 10 * 60 * 1000;
 const JOBICY_CACHE_MS = 60 * 60 * 1000;
 const REMOTIVE_CACHE_MS = 6 * 60 * 60 * 1000;
@@ -112,8 +112,8 @@ async function mapConcurrent(items, limit, worker) {
 }
 
 async function fetchTrudvsem(query, offset) {
-  const params = new URLSearchParams({ text: query, offset: String(offset), limit: "100" });
-  return normalizeTrudvsemPayload(await fetchWithTimeout(`${TRUDVSEM_API}?${params}`), offset);
+  const params = new URLSearchParams({ text: query, offset: String(offset), limit: "30" });
+  return normalizeTrudvsemPayload(await fetchWithTimeout(`${TRUDVSEM_API}?${params}`, { headers: { "User-Agent": "JOBOS/1.0 (job search application)", Accept: "application/json" } }), offset);
 }
 
 async function fetchTrudvsemView(company, id) {
@@ -255,7 +255,6 @@ async function handleSnapshotFeed(response, url, loader) {
   }
 }
 
-
 async function handleTrudvsemView(response, url) {
   const validation = validateTrudvsemViewRequest(url.searchParams.get("company"), url.searchParams.get("id"));
   if (!validation.ok) return sendHtml(response, validation.status, "Некорректная ссылка вакансии");
@@ -294,51 +293,66 @@ async function handleApi(request, response, url) {
   if (source === "jobicy") return handleSnapshotFeed(response, url, fetchJobicy);
   if (url.pathname === "/api/jobs/ats") return handlePublicFeed(response, url, fetchAts);
   if (source === "ats") return handleSnapshotFeed(response, url, fetchAts);
+  if (url.pathname === "/api/jobs/arbeitnow") return handlePublicFeed(response, url, fetchArbeitnow);
   if (source === "arbeitnow") return handleSnapshotFeed(response, url, fetchArbeitnow);
-  if (source === "telegram") return handleSnapshotFeed(response, url, fetchTelegram);
-  if (url.pathname !== "/api/jobs/trudvsem") return sendJson(response, 404, { error: "not_found" });
-
-  const validation = validateTrudvsemRequest(url.searchParams.get("q"), url.searchParams.get("offset"));
-  if (!validation.ok) return sendJson(response, validation.status, { error: validation.error });
-  try {
-    sendJson(response, 200, await fetchTrudvsem(validation.query, validation.offset));
-  } catch (error) {
-    const timedOut = error instanceof DOMException && error.name === "AbortError";
-    sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
+  if (url.pathname === "/api/jobs/trudvsem") {
+    const validation = validateTrudvsemRequest(url.searchParams);
+    if (!validation.ok) return sendJson(response, validation.status, { error: validation.error });
+    try {
+      return sendJson(response, 200, await fetchTrudvsem(validation.query, validation.offset));
+    } catch (error) {
+      const timedOut = error instanceof DOMException && error.name === "AbortError";
+      return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
+    }
   }
+  if (url.pathname === "/api/jobs/telegram" || source === "telegram") {
+    try {
+      return sendJson(response, 200, await fetchTelegram(url));
+    } catch {
+      return sendJson(response, 502, { error: "upstream_unavailable" });
+    }
+  }
+  return sendJson(response, 404, { error: "not_found" });
+}
+
+function safeStaticPath(pathname) {
+  const relative = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+  const candidate = normalize(join(DIST_DIR, relative));
+  return candidate.startsWith(DIST_DIR) ? candidate : null;
 }
 
 async function serveStatic(response, pathname) {
-  const requested = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
-  const safePath = normalize(requested).replace(/^(\.\.(\/|\\|$))+/, "");
-  let filePath = resolve(DIST_DIR, safePath);
-  if (!filePath.startsWith(`${DIST_DIR}/`) && filePath !== DIST_DIR) filePath = join(DIST_DIR, "index.html");
-  try {
-    const info = await stat(filePath);
-    if (!info.isFile()) throw new Error("not_file");
-  } catch {
-    filePath = join(DIST_DIR, "index.html");
+  const candidate = safeStaticPath(pathname);
+  if (candidate) {
+    try {
+      const info = await stat(candidate);
+      if (info.isFile()) {
+        response.writeHead(200, withSecurityHeaders({ "Content-Type": MIME_TYPES.get(extname(candidate)) || "application/octet-stream", "Cache-Control": extname(candidate) === ".html" ? "no-store" : "public, max-age=31536000, immutable" }));
+        response.end(await readFile(candidate));
+        return;
+      }
+    } catch {}
   }
   try {
-    const body = await readFile(filePath);
-    response.writeHead(200, withSecurityHeaders({
-      "Content-Type": MIME_TYPES.get(extname(filePath)) || "application/octet-stream",
-      "Cache-Control": filePath.endsWith("index.html") ? "no-cache" : "public, max-age=31536000, immutable",
-    }));
-    response.end(body);
+    response.writeHead(200, withSecurityHeaders({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }));
+    response.end(await readFile(join(DIST_DIR, "index.html")));
   } catch {
-    response.writeHead(503, withSecurityHeaders({ "Content-Type": "text/plain; charset=utf-8" }));
-    response.end("Production build not found. Run npm run build first.");
+    sendJson(response, 500, { error: "build_missing" });
   }
 }
 
-createServer(async (request, response) => {
+const server = createServer(async (request, response) => {
+  const url = new URL(request.url || "/", `http://${request.headers.host || `${HOST}:${PORT}`}`);
   try {
-    const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
     if (url.pathname.startsWith("/api/")) await handleApi(request, response, url);
-    else await serveStatic(response, decodeURIComponent(url.pathname));
-  } catch {
-    if (!response.headersSent) sendJson(response, 500, { error: "internal_error" });
-    else response.end();
+    else await serveStatic(response, url.pathname);
+  } catch (error) {
+    sendJson(response, 500, { error: "internal_error" });
   }
-}).listen(PORT, HOST, () => console.log(`HuntPulse server listening on http://${HOST}:${PORT}`));
+});
+
+server.listen(PORT, HOST, () => {
+  console.log(`HuntPulse server listening on http://${HOST}:${PORT}`);
+});
+
+export { fetchHh, fetchTrudvsem, fetchRemoteOk, fetchWwr, fetchRemotive, fetchJobicy, fetchArbeitnow, fetchAts, fetchTelegram, handleApi };
