@@ -7,6 +7,8 @@ export const SNAPSHOT_BFF_SOURCES = Object.freeze([
   "ats",
 ]);
 
+export const AUTOMATIC_FIRST_PAGE_SOURCES = SNAPSHOT_BFF_SOURCES;
+
 const SNAPSHOT_SET = new Set(SNAPSHOT_BFF_SOURCES);
 
 export function isSnapshotBffSource(source) {
