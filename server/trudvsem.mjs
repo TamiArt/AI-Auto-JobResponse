@@ -1,4 +1,4 @@
-const PAGE_SIZE = 100;
+const PAGE_SIZE = 30;
 
 export function salaryLabel(vacancy) {
   if (typeof vacancy?.salary === "string" && vacancy.salary.trim()) return vacancy.salary.trim();
