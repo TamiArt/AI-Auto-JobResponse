@@ -87,7 +87,87 @@ HH и «Работа России» остаются query-dependent API, пот
 
 Для большинства источников это оригинальное объявление. Для «Работа России», если публичная карточка портала нестабильна, используется `/api/jobs/trudvsem-view`, который загружает данные из официального Open Data API; ссылка на оригинал сохраняется внутри viewer.
 
-## Production audit status\n\nНа ветке `feature/jobos-application-audit` production-проверка идёт атомарными изменениями с contract tests. Уже закреплены: строгий normalized `SearchResult` contract с обязательными `id/title/company/url`, дедупликация URL с удалением common tracking-параметров, независимое выполнение источников через `Promise.allSettled`, HH pagination до 2000 результатов upstream, currency-aware salary filtering без фиктивной конвертации, remote/hybrid/office filters, локальное сохранение AI Workspace импортов, Preview → explicit confirmation → manual application flow и Telegram Mini App `initData`/webhook-secret validation.\n\nНезавершённые проверки не считаются выполненными до прохождения CI `npm run check:full` и отдельной проверки реальных upstream payloads.\n\n## Надёжность\n
+## Production audit status
+
+### Product definition — JOBOS
+
+JOBOS (AI Career Operating System) is not just a vacancy aggregator. The product flow is:
+
+**Search settings → real vacancies → normalization/validation → user filters → separate Career Profile matching → Application Studio → AI assistance → user review → original vacancy → application history.**
+
+The ordinary **Search** mode answers: “What real vacancies exist for my query and filters?”  
+The separate **Подбор** mode answers: “Which of these vacancies match my Career Profile?”  
+**Search results must never be silently re-ranked by the user's Career Profile.**
+
+### Current development stage
+
+**Milestone: Production hardening / Search correctness.**
+
+Current work is focused on proving that existing sources, normalization, filtering, deduplication, caching, AI Workspace persistence, Application Studio confirmation flow and Telegram security work with real production-shaped data.
+
+A feature is considered complete only when its implementation, tests, CI and documented behavior agree. A green unit test alone does not prove that a real upstream source works.
+
+### Mandatory development sequence
+
+1. **Search correctness** — verify every current upstream with real responses; malformed payloads; required fields; safe URLs; salary amount/range/currency/period; work mode; employment; HH pagination; cross-source deduplication; source-failure isolation; original links.
+2. **Search UX** — source status/capabilities; publication-date filter; sorting; pagination/load-more; vacancy details; stale-cache and partial-source visibility.
+3. **Career Intelligence** — Career Profile; separate matching mode; explainable compatibility facts; gaps/requirements; no unconfirmed AI facts.
+4. **Application OS** — Application Studio; material versions; notes; status history; application date; tracker/dashboard.
+5. **AI Workspace** — vacancy-linked materials; imported external-AI answers; structured re-analysis only through a selected AI provider; no mandatory paid provider.
+6. **Persistence and identity** — secure Telegram identity/session; server-side user data; cross-device persistence.
+7. **Monitoring** — saved searches; new-vacancy detection; optional notifications.
+8. **Telegram Mini App** — complete authenticated user flow and shared web/Mini App data.
+9. **Only after the above:** additional sources and any permitted official application automation.
+
+### What is allowed
+
+- Real public APIs/feeds and permitted public web previews.
+- Server-side BFF/proxy where required by source policy.
+- Query-independent source snapshots where upstream limits require them.
+- Contract fixtures captured from real upstream responses.
+- Local browser persistence as an interim MVP mechanism.
+- User-provided AI API keys.
+- Manual application submission after explicit user confirmation.
+- New sources only when their public API/feed/usage model is verified and documented.
+
+### What is forbidden
+
+- Fake vacancy data presented as real.
+- Tests claiming an upstream works without verifying the upstream.
+- Silent profile-based re-ranking of ordinary Search.
+- AI-invented education, certificates, employment history or other unconfirmed facts.
+- Automatic application submission by default.
+- CAPTCHA bypass, hidden scraping, scraping-as-a-service or bypassing access controls.
+- Sending user secrets/tokens to the browser when they must remain server-side.
+- Treating Telegram `initDataUnsafe` as trusted identity.
+- Marking a backlog feature as implemented when it is only a placeholder.
+- Adding a mandatory paid API for basic job search.
+- Large unrelated refactors while fixing a production bug.
+- Committing generated/broken source with literal escaped newlines such as `\\n` where a real line break is required.
+
+### Verification rule for every change
+
+Use the smallest atomic change possible:
+
+**inspect → reproduce → identify root cause → patch → targeted test → `npm run check:full` → inspect CI → document status.**
+
+Never declare a fix complete from a patch alone. If CI fails, continue from the actual failure output rather than guessing.
+
+### File/documentation rule
+
+`README.md` is the high-level product and engineering contract.  
+`docs/TECHNICAL_ROADMAP.md` is the executable development plan and current-state ledger.
+
+Every meaningful product/architecture change must update the roadmap when it changes:
+- current milestone;
+- implemented/not implemented status;
+- allowed/forbidden behavior;
+- architecture constraints;
+- future work or implementation order.
+
+Every future agent must read both files before making architectural changes.
+
+## Надёжность\n
 - независимые adapters + `Promise.allSettled`;
 - capability-check `/api/health`;
 - HH вызывается через server-side BFF, а не напрямую из браузера;
