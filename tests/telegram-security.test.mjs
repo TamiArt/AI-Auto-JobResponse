@@ -23,7 +23,7 @@ test("Telegram Mini App initData validates with Telegram's HMAC scheme", () => {
 
 test("Telegram Mini App rejects tampered, expired and future initData", () => {
   const valid = makeInitData("123456:ABC", 1_000_000);
-  assert.equal(validateTelegramInitData(valid.replace("first_name=Test", "first_name=Other"), "123456:ABC", 1_000_000).ok, false);
+  assert.equal(validateTelegramInitData(valid.replace("Test", "Other"), "123456:ABC", 1_000_000).ok, false);
   assert.equal(validateTelegramInitData(valid, "123456:ABC", 1_086_401).ok, false);
   assert.equal(validateTelegramInitData(makeInitData("123456:ABC", 1_000_100), "123456:ABC", 1_000_000).ok, false);
 });
