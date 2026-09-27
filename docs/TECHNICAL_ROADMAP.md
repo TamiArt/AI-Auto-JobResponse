@@ -78,7 +78,8 @@ Telegram является отдельным источником ваканси
 - [ ] До реализации не просить HH token; показывать «Будет реализовано позже».
 
 ### Job application workflow
-- [ ] Статусы: интересно / откликнулся / интервью / оффер / отказ / архив.\n- [x] Базовый Application Studio tracker: сохранение подготовленных материалов и статуса открытия вакансии в localStorage.
+- [ ] Статусы: интересно / откликнулся / интервью / оффер / отказ / архив.
+- [x] Базовый Application Studio tracker: сохранение подготовленных материалов и статуса открытия вакансии в localStorage.
 - [ ] Заметки к вакансии.
 - [ ] Дата отклика и история изменения статуса.
 - [ ] Pipeline/dashboard.
@@ -226,7 +227,8 @@ Search and matching are separate product modes. Ordinary Search must not silentl
 
 ## CI / Git hygiene
 
-- Never commit literal escaped newlines (\\n) into source/test files when a real newline is required.
+- Never commit literal escaped newlines (\
+) into source/test files when a real newline is required.
 - Structure/syntax checks are mandatory; a syntactically broken test blocks the whole pipeline.
 - Prefer atomic commits with one clear purpose.
 - Do not use accept both during conflict resolution.
