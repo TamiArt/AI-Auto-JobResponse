@@ -20,13 +20,26 @@ function normalized(value) {
   return String(value || "").toLocaleLowerCase("ru-RU").replace(/ё/g, "е").trim();
 }
 
+export function canonicalUrl(value) {
+  try {
+    const url = new URL(String(value));
+    url.hash = "";
+    url.pathname = url.pathname.replace(/\\/+$/, "") || "/";
+    url.hostname = url.hostname.toLocaleLowerCase();
+    if ((url.protocol === "https:" && url.port === "443") || (url.protocol === "http:" && url.port === "80")) url.port = "";
+    return url.toString();
+  } catch {
+    return String(value);
+  }
+}
+
 export function mergeSearchResults(...groups) {
   const seen = new Set();
   const merged = [];
 
   for (const result of groups.flat()) {
     if (!isSearchResult(result)) continue;
-    const key = `${normalized(result.title)}|${normalized(result.company)}|${result.url}`;
+    const key = canonicalUrl(result.url) || `${normalized(result.title)}|${normalized(result.company)}`;
     if (seen.has(key)) continue;
     seen.add(key);
     merged.push(result);
