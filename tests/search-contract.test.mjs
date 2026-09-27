@@ -39,3 +39,17 @@ test("mergeSearchResults removes duplicates and sorts newest first", () => {
   const merged = mergeSearchResults([old, recent], [duplicate, malformed]);
   assert.deepEqual(merged.map((item) => item.id), ["recent", "old"]);
 });
+
+
+test("mergeSearchResults deduplicates equivalent URL spellings", () => {
+  const first = result({ id: "first", url: "https://example.test/vacancy/42#apply", publishedTimestamp: 20 });
+  const second = result({ id: "second", title: "QA Engineer Updated", url: "https://EXAMPLE.test:443/vacancy/42/", publishedTimestamp: 10 });
+  const merged = mergeSearchResults([first, second]);
+  assert.deepEqual(merged.map((item) => item.id), ["first"]);
+});
+
+test("mergeSearchResults keeps distinct vacancy URLs even when title and company match", () => {
+  const first = result({ id: "first", url: "https://example.test/vacancy/1" });
+  const second = result({ id: "second", url: "https://example.test/vacancy/2" });
+  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first", "second"]);
+});
