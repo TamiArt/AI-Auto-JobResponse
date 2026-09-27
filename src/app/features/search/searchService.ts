@@ -39,7 +39,7 @@ interface BffSearchResult { id: string; title: string; company: string; salary: 
 interface BffFeedPayload { results?: BffSearchResult[]; meta?: SourceRefreshMeta; }
 interface AdapterResult { results: SearchResult[]; nextHhPage: number | null; refresh?: Partial<Record<FeedJobSource, SourceRefreshMeta>>; }
 
-const REQUEST_TIMEOUT_MS = 12_000;
+const REQUEST_TIMEOUT_MS = 35_000;
 const CAPABILITY_TIMEOUT_MS = 1_500;
 const ATS_SOURCES = new Set<AtsJobSource>(["greenhouse", "lever", "ashby", "smartrecruiters", "recruitee", "workable"]);
 const AUTOMATIC_FIRST_PAGE_SOURCES: SearchSource[] = ["trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
