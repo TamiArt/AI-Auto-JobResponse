@@ -9,6 +9,7 @@ import {
   SOURCE_NAMES,
 } from "../api/_shared.mjs";
 import { ATS_CONCURRENCY } from "../server/atsRegistry.mjs";
+import { UPSTREAM_TIMEOUT_MS } from "../server/runtimeConfig.mjs";
 import { HH_USER_AGENT } from "../server/hh.mjs";
 
 function createResponse() {
@@ -36,7 +37,7 @@ test("Vercel health endpoint exposes capability contract", () => {
   assert.equal(response.getHeader("x-content-type-options"), "nosniff");
 });
 
-test("Vercel status reports source-snapshot cache policy without upstream calls", () => {
+test("Vercel status reports source-snapshot cache policy and shared runtime limits", () => {
   const response = createResponse();
   handleStatus({ method: "GET", headers: { host: "localhost" }, url: "/api/status" }, response);
   const body = JSON.parse(response.body);
@@ -44,6 +45,7 @@ test("Vercel status reports source-snapshot cache policy without upstream calls"
   assert.equal(body.cache, "vercel-cdn");
   assert.equal(body.cacheKeyPolicy, "source-snapshot");
   assert.deepEqual(body.snapshotSources, SNAPSHOT_SOURCES);
+  assert.equal(body.upstreamTimeoutMs, UPSTREAM_TIMEOUT_MS);
   assert.equal(body.atsConcurrency, ATS_CONCURRENCY);
   assert.equal(body.cacheSeconds.hh, 300);
   assert.equal(body.cacheSeconds.jobicy, 3600);
