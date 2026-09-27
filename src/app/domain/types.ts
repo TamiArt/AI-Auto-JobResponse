@@ -7,7 +7,9 @@ export type JobSource =
   | "behance" | "dribbble" | "artstation" | "upwork" | "freelancer" | "kwork" | "telegram";
 
 export type ExperienceFilter = "any" | "noExperience" | "between1And3" | "between3And6" | "moreThan6";
+export type WorkMode = "remote" | "hybrid" | "onsite" | "unknown";
 export type WorkModeFilter = "any" | "remote" | "hybrid" | "onsite";
+export type EmploymentType = "fullTime" | "partTime" | "contract" | "internship" | "unknown";
 export type EmploymentTypeFilter = "any" | "fullTime" | "partTime" | "contract" | "internship";
 
 export type SalaryCurrency = "RUB" | "USD" | "EUR" | "GBP";
