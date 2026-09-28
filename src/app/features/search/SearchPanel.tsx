@@ -7,7 +7,7 @@ import { PROFESSION_EXAMPLES, PROFESSION_GROUPS } from "../../data/professions";
 import { mergeSearchResults, searchJobs, type RealJobSource, type SearchRequest, type SearchResult, type SearchResponse, type SourceRefreshMeta } from "./searchService";
 import { addSearchHistory, clearSearchHistory, loadFavorites, loadSearchHistory, persistFavorites, type SearchHistoryEntry } from "./searchStorage";
 
-const USER_SOURCES: RealJobSource[] = ["hh", "arbeitnow"];
+const USER_SOURCES: RealJobSource[] = ["hh", "arbeitnow", "remocate"];
 const LIMITED_REFRESH_SOURCES: RealJobSource[] = ["jobicy", "remotive"];
 const EXTERNAL_SOURCES: JobSource[] = ["habr", "geekjob", "finder", "djinni", "remoteco", "linkedin", "indeed", "glassdoor", "wellfound", "behance", "dribbble", "artstation"];
 const SALARY_CURRENCIES: Array<{ value: SalaryCurrency; label: string }> = [{ value: "RUB", label: "₽ RUB" }, { value: "USD", label: "$ USD" }, { value: "EUR", label: "€ EUR" }, { value: "GBP", label: "£ GBP" }];
