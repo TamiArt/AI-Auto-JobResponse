@@ -8,10 +8,11 @@ const QUERY_TERM_ALIASES = new Map([
   ["инженер", ["инженер", "engineer"]],
   ["инженера", ["инженер", "engineer"]],
   ["инженеры", ["инженер", "engineer"]],
+  ["qa", ["qa", "quality assurance"]],
   ["разработчик", ["разработчик", "developer", "software engineer"]],
   ["разработчики", ["разработчик", "developer", "software engineer"]],
   ["тестировщик", ["тестировщик", "tester", "qa", "quality assurance"]],
-  ["тестировщикa", ["тестировщик", "tester", "qa", "quality assurance"]],
+  ["тестировщика", ["тестировщик", "tester", "qa", "quality assurance"]],
   ["тестирование", ["тестирование", "testing", "qa", "quality assurance"]],
   ["дизайнер", ["дизайнер", "designer", "design"]],
   ["аналитик", ["аналитик", "analyst", "analytics"]],
@@ -26,7 +27,7 @@ const EMPLOYMENT_SIGNALS = {
 };
 
 export function matchesQuery(query, ...values) {
-  const terms = normalizeText(query).split(/\s+/).filter(Boolean);
+  const terms = normalizeText(query).replace(/[-–—_/]+/g, " ").split(/\s+/).filter(Boolean);
   const haystack = normalizeText(values.filter(Boolean).join(" "));
   return terms.every((term) => {
     const aliases = QUERY_TERM_ALIASES.get(term) || [term];
