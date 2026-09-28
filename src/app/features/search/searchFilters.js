@@ -16,7 +16,8 @@ export function matchesQuery(query, ...values) {
   return terms.every((term) => haystack.includes(term));
 }
 
-export function matchesArea(areaId, location) {
+export function matchesArea(areaId, location, source) {
+  if (source && source !== "hh" && source !== "trudvsem") return true;
   const normalized = normalizeText(location);
   if (areaId === "1") return normalized.includes("москва") && !normalized.includes("московская область");
   if (areaId === "2") return normalized.includes("санкт-петербург");
@@ -137,7 +138,7 @@ export function matchesExperience(filter, value) {
 
 export function applySearchFilters(request, item) {
   return matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || []))
-    && matchesArea(request.areaId, item.location)
+    && matchesArea(request.areaId, item.location, item.source)
     && matchesExperience(request.experience, item.experience)
     && matchesSalary(request, item.salary, item.normalizedSalary)
     && matchesWorkMode(request, item)
