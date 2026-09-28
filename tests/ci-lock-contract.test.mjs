@@ -9,7 +9,7 @@ const workflowPath = path.join(root, ".github", "workflows", "ci.yml");
 const workflow = fs.readFileSync(workflowPath, "utf8");
 
 test("CI npm cache is only enabled when a supported lockfile exists", () => {
-  const usesNpmCache = /(^|\\n)\\s*cache:\\s*npm\\s*(?:\\n|$)/.test(workflow);
+  const usesNpmCache = /(^|\n)\s*cache:\s*npm\s*(?:\n|$)/.test(workflow);
   if (!usesNpmCache) return;
 
   const hasLockfile =
