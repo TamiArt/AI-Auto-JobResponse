@@ -91,7 +91,8 @@ test("critical job search flow works in a real browser", async ({ page }) => {
   await page.getByRole("button", { name: "Найти", exact: true }).click();
 
   await expect.poll(() => jobicyRequests).toBeGreaterThan(0);
-  expect([...requestedSources]).toEqual(expect.arrayContaining(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"]));
+  expect([...requestedSources]).toEqual(expect.arrayContaining(["hh", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"]));
+  expect(requestedSources.has("trudvsem")).toBe(false);
   const card = page.getByRole("article").filter({ hasText: "QA Engineer" });
   await expect(card).toBeVisible();
   await expect(card).toContainText("Example Product");
