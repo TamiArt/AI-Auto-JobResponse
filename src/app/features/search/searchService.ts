@@ -1,6 +1,6 @@
 import type { EmploymentType, EmploymentTypeFilter, ExperienceFilter, SalaryCurrency, WorkMode, WorkModeFilter } from "../../domain/types";
 import { isSearchResult, mergeSearchResults as mergeContractResults } from "./searchContract.js";
-import { AUTOMATIC_FIRST_PAGE_SOURCES, buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy.js";
+import { AUTOMATIC_FIRST_PAGE_SOURCES, buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy";
 import { applySearchFilters, inferEmploymentType, inferWorkMode, matchesExperience, matchesQuery, normalizeSalary } from "./searchFilters.js";
 import { buildHhSearchParams } from "./hhRequestPolicy.js";
 
