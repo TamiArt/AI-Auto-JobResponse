@@ -1,4 +1,4 @@
-import type { EmploymentType, EmploymentTypeFilter, ExperienceFilter, SalaryCurrency, WorkMode, WorkModeFilter } from "../../domain/types";
+import type { EmploymentType, EmploymentTypeFilter, ExperienceFilter, PublishedWithinFilter, SalaryCurrency, SearchSort, WorkMode, WorkModeFilter } from "../../domain/types";
 import { isSearchResult, mergeSearchResults as mergeContractResults } from "./searchContract.js";
 import { AUTOMATIC_FIRST_PAGE_SOURCES, buildBffSourcePath, isSnapshotBffSource } from "./sourceRequestPolicy.ts";
 import { applySearchFilters, inferEmploymentType, inferWorkMode, matchesExperience, matchesQuery, normalizeSalary } from "./searchFilters.js";
@@ -25,7 +25,7 @@ export interface SearchResult {
 
 export interface SearchRequest {
   query: string; areaId: string; salaryFrom: string; salaryTo?: string; salaryCurrency?: SalaryCurrency; workMode?: WorkModeFilter; location?: string; employmentType?: EmploymentTypeFilter;
-  experience: ExperienceFilter; sources: SearchSource[]; telegramChannels?: string[]; page?: number;
+  experience: ExperienceFilter; publishedWithin?: PublishedWithinFilter; sortBy?: SearchSort; sources: SearchSource[]; telegramChannels?: string[]; page?: number;
 }
 
 export interface SourceRefreshMeta { lastUpdated: number; nextRefresh: number; refreshIntervalMs: number; cached: boolean; stale: boolean; }
@@ -46,6 +46,22 @@ const ATS_SOURCES = new Set<AtsJobSource>(["greenhouse", "lever", "ashby", "smar
 const BACKEND_REQUIRED_SOURCES = new Set<SearchSource>(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "ats", "telegram"]);
 let backendCapability: Promise<boolean> | null = null;
 
+function sortResults(results: SearchResult[], request: SearchRequest): SearchResult[] {
+  const query = request.query.trim().toLocaleLowerCase("ru-RU");
+  const score = (item: SearchResult) => {
+    const text = [item.title, item.company, item.description, ...(item.tags || [])].join(" ").toLocaleLowerCase("ru-RU");
+    return query ? query.split(/\s+/).filter(Boolean).reduce((total, term) => total + (text.includes(term) ? 1 : 0), 0) : 0;
+  };
+  return [...results].sort((a, b) => {
+    if (request.sortBy === "salary") {
+      const av = a.normalizedSalary?.max ?? a.normalizedSalary?.min ?? -1;
+      const bv = b.normalizedSalary?.max ?? b.normalizedSalary?.min ?? -1;
+      return bv - av || b.publishedTimestamp - a.publishedTimestamp;
+    }
+    if (request.sortBy === "relevance") return score(b) - score(a) || b.publishedTimestamp - a.publishedTimestamp;
+    return b.publishedTimestamp - a.publishedTimestamp;
+  });
+}
 function formatDate(timestamp: number): string { return timestamp ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(timestamp)) : "Дата не указана"; }
 function formatSalary(salary: HhVacancy["salary"]): string { if (!salary) return "Зарплата не указана"; const parts: string[] = []; if (salary.from) parts.push(`от ${salary.from.toLocaleString("ru-RU")}`); if (salary.to) parts.push(`до ${salary.to.toLocaleString("ru-RU")}`); if (salary.currency) parts.push(salary.currency); return parts.join(" ") || "Зарплата не указана"; }
 async function fetchWithTimeout<T>(url: string, init: RequestInit = {}): Promise<T> { const controller = new AbortController(); const timeout = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS); try { const response = await fetch(url, { ...init, signal: controller.signal }); if (!response.ok) throw new Error(`HTTP ${response.status}`); return await response.json() as T; } finally { globalThis.clearTimeout(timeout); } }
@@ -94,4 +110,4 @@ const adapters: Record<SearchSource, (request: SearchRequest) => Promise<Adapter
 export function mergeSearchResults(...groups: SearchResult[][]): SearchResult[] { return mergeContractResults(...groups) as SearchResult[]; }
 async function sourcesForRequest(request: SearchRequest): Promise<{ sources: SearchSource[]; backendAvailable: boolean }> { const backendAvailable = await detectBackend(); const requested = request.sources.filter((source) => backendAvailable || !BACKEND_REQUIRED_SOURCES.has(source)); if ((request.page ?? 0) > 0) return { sources: requested, backendAvailable }; const automatic = backendAvailable ? AUTOMATIC_FIRST_PAGE_SOURCES : []; const telegram = backendAvailable && request.telegramChannels?.length ? ["telegram" as const] : []; return { sources: Array.from(new Set([...automatic, ...telegram, ...requested])), backendAvailable }; }
 export async function searchJobs(request: SearchRequest): Promise<SearchResponse> {
-  const capability = await sourcesForRequest(request); const sources = capability.sources; const settled = await Promise.allSettled(sources.map(async (source) => ({ source, response: await adapters[source](request) }))); const results: SearchResult[] = []; const errors: SearchResponse["errors"] = {}; const refresh: NonNullable<SearchResponse["refresh"]> = {}; let nextHhPage: number | null = null; settled.forEach((entry, index) => { const source = sources[index]; if (entry.status === "fulfilled") { results.push(...entry.value.response.results); Object.assign(refresh, entry.value.response.refresh || {}); if (source === "hh") nextHhPage = entry.value.response.nextHhPage; return; } const reason = entry.reason; errors[source] = reason instanceof DOMException && reason.name === "AbortError" ? "Источник не ответил вовремя" : "Источник временно недоступен"; }); return { results: mergeSearchResults(results), errors, attemptedSources: sources, nextHhPage, refresh: Object.keys(refresh).length ? refresh : undefined, backendAvailable: capability.backendAvailable }; }
+  const capability = await sourcesForRequest(request); const sources = capability.sources; const settled = await Promise.allSettled(sources.map(async (source) => ({ source, response: await adapters[source](request) }))); const results: SearchResult[] = []; const errors: SearchResponse["errors"] = {}; const refresh: NonNullable<SearchResponse["refresh"]> = {}; let nextHhPage: number | null = null; settled.forEach((entry, index) => { const source = sources[index]; if (entry.status === "fulfilled") { results.push(...entry.value.response.results); Object.assign(refresh, entry.value.response.refresh || {}); if (source === "hh") nextHhPage = entry.value.response.nextHhPage; return; } const reason = entry.reason; errors[source] = reason instanceof DOMException && reason.name === "AbortError" ? "Источник не ответил вовремя" : "Источник временно недоступен"; }); return { results: sortResults(mergeSearchResults(results), request), errors, attemptedSources: sources, nextHhPage, refresh: Object.keys(refresh).length ? refresh : undefined, backendAvailable: capability.backendAvailable }; }
