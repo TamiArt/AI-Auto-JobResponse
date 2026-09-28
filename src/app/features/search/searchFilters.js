@@ -45,14 +45,6 @@ export function matchesQuery(query, ...values) {
     const aliases = QUERY_TERM_ALIASES.get(term) || [term];
     return aliases.some((alias) => containsQueryPhrase(haystack, alias));
   });
-}(query, ...values) {
-  const terms = normalizeQueryText(query).split(/\s+/).filter(Boolean);
-  const haystack = values.filter(Boolean).join(" ");
-  return terms.every((term) => {
-    const aliases = QUERY_TERM_ALIASES.get(term) || [term];
-    return aliases.some((alias) => containsQueryPhrase(haystack, alias));
-  });
-}
 
 export function matchesArea(areaId, location, source) {
   if (source && source !== "hh" && source !== "trudvsem") return true;
