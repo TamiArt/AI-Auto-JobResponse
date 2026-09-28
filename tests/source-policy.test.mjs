@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { AUTOMATIC_FIRST_PAGE_SOURCES, SNAPSHOT_BFF_SOURCES, buildBffSourcePath, isSnapshotBffSource } from "../src/app/features/search/sourceRequestPolicy.js";
+import { AUTOMATIC_FIRST_PAGE_SOURCES, SNAPSHOT_BFF_SOURCES, buildBffSourcePath, isSnapshotBffSource } from "../src/app/features/search/sourceRequestPolicy.ts";
 
 test("automatic first-page search uses only query-independent snapshot sources", () => {
   assert.deepEqual(AUTOMATIC_FIRST_PAGE_SOURCES, SNAPSHOT_BFF_SOURCES);
