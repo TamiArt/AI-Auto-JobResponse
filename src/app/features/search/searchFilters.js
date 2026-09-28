@@ -26,12 +26,31 @@ const EMPLOYMENT_SIGNALS = {
   contract: /contract|контракт|проектн|freelance|фриланс/,
 };
 
-export function matchesQuery(query, ...values) {
+function normalizeQueryText(value) {
+  return normalizeText(value).replace(/[-–—_/]+/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function containsQueryPhrase(haystack, phrase) {
+  const normalizedHaystack = normalizeQueryText(haystack);
+  const normalizedPhrase = normalizeQueryText(phrase);
+  if (!normalizedPhrase) return false;
+  const escapedPhrase = normalizedPhrase.replace(/[.*+?^${}()|[\]\\]/g, "\\export function matchesQuery(query, ...values) {
   const terms = normalizeText(query).replace(/[-–—_/]+/g, " ").split(/\s+/).filter(Boolean);
   const haystack = normalizeText(values.filter(Boolean).join(" "));
   return terms.every((term) => {
     const aliases = QUERY_TERM_ALIASES.get(term) || [term];
     return aliases.some((alias) => haystack.includes(alias));
+  });
+}");
+  return new RegExp("(^|[^\\p{L}\\p{N}])" + escapedPhrase + "(?=$|[^\\p{L}\\p{N}])", "iu").test(normalizedHaystack);
+}
+
+export function matchesQuery(query, ...values) {
+  const terms = normalizeQueryText(query).split(/\s+/).filter(Boolean);
+  const haystack = values.filter(Boolean).join(" ");
+  return terms.every((term) => {
+    const aliases = QUERY_TERM_ALIASES.get(term) || [term];
+    return aliases.some((alias) => containsQueryPhrase(haystack, alias));
   });
 }
 
