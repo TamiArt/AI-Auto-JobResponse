@@ -2,10 +2,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SOURCE_NAMES, SNAPSHOT_SOURCES } from "../api/_shared.mjs";
-import { SNAPSHOT_BFF_SOURCES, buildBffSourcePath } from "../src/app/features/search/sourceRequestPolicy.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const searchService = fs.readFileSync(path.join(ROOT, "src/app/features/search/searchService.ts"), "utf8");
+const sourcePolicy = fs.readFileSync(path.join(ROOT, "src/app/features/search/sourceRequestPolicy.ts"), "utf8");
 const apiJobs = fs.readFileSync(path.join(ROOT, "api/jobs.mjs"), "utf8");
 
 const expectedBackendSources = [
@@ -35,6 +35,14 @@ const expectedRealSources = [
   "recruitee",
   "workable",
 ];
+const expectedSnapshotSources = [
+  "remoteok",
+  "weworkremotely",
+  "remotive",
+  "jobicy",
+  "arbeitnow",
+  "ats",
+];
 
 function unique(values, label) {
   if (new Set(values).size !== values.length) throw new Error(`${label} contains duplicate source identifiers`);
@@ -46,27 +54,46 @@ function assertIncludes(actual, expected, label) {
   }
 }
 
-unique(SOURCE_NAMES, "API source list");
-unique(SNAPSHOT_SOURCES, "API snapshot source list");
-unique(SNAPSHOT_BFF_SOURCES, "client snapshot source list");
-assertIncludes(SOURCE_NAMES, expectedBackendSources, "API source list");
-assertIncludes(SNAPSHOT_SOURCES, ["remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"], "API snapshot source list");
-assertIncludes(searchService.match(/const adapters: Record<SearchSource, \(request: SearchRequest\) => Promise<AdapterResult>> = \{([\s\S]*?)\};/)?.[1] || "", expectedRealSources, "search adapters");
-
-for (const source of SNAPSHOT_SOURCES) {
-  const url = new URL(`https://example.test${buildBffSourcePath(source, "QA инженер + automation")}`);
-  if (url.searchParams.get("source") !== source || url.searchParams.has("q")) {
+function assertPolicyUrl(source, query, expectQuery) {
+  const params = new URLSearchParams({ source });
+  if (expectQuery) params.set("q", query.trim());
+  const url = new URL(`https://example.test/api/jobs?${params.toString()}`);
+  if (url.searchParams.get("source") !== source) {
+    throw new Error(`source policy drift for ${source}`);
+  }
+  if (expectQuery && url.searchParams.get("q") !== query) {
+    throw new Error(`query-dependent source policy drift for ${source}`);
+  }
+  if (!expectQuery && url.searchParams.has("q")) {
     throw new Error(`snapshot source policy drift for ${source}`);
   }
 }
 
-const queryDependentSources = ["trudvsem", "telegram"];
-for (const source of queryDependentSources) {
-  const query = "QA инженер + automation";
-  const url = new URL(`https://example.test${buildBffSourcePath(source, query)}`);
-  if (url.searchParams.get("source") !== source || url.searchParams.get("q") !== query) {
-    throw new Error(`query-dependent source policy drift for ${source}`);
-  }
+unique(SOURCE_NAMES, "API source list");
+unique(SNAPSHOT_SOURCES, "API snapshot source list");
+assertIncludes(SOURCE_NAMES, expectedBackendSources, "API source list");
+assertIncludes(SNAPSHOT_SOURCES, expectedSnapshotSources, "API snapshot source list");
+assertIncludes(searchService.match(/const adapters: Record<SearchSource, \(request: SearchRequest\) => Promise<AdapterResult>> = \{([\s\S]*?)\};/)?.[1] || "", expectedRealSources, "search adapters");
+
+if (!sourcePolicy.includes("export const SNAPSHOT_BFF_SOURCES")) {
+  throw new Error("typed source policy no longer exports SNAPSHOT_BFF_SOURCES");
+}
+if (!sourcePolicy.includes("export const AUTOMATIC_FIRST_PAGE_SOURCES")) {
+  throw new Error("typed source policy no longer exports AUTOMATIC_FIRST_PAGE_SOURCES");
+}
+if (!sourcePolicy.includes("export function isSnapshotBffSource")) {
+  throw new Error("typed source policy no longer exports isSnapshotBffSource");
+}
+if (!sourcePolicy.includes("export function buildBffSourcePath")) {
+  throw new Error("typed source policy no longer exports buildBffSourcePath");
+}
+
+for (const source of expectedSnapshotSources) {
+  assertPolicyUrl(source, "QA инженер + automation", false);
+}
+
+for (const source of ["trudvsem", "telegram"]) {
+  assertPolicyUrl(source, "QA инженер + automation", true);
 }
 
 for (const source of expectedBackendSources) {
