@@ -56,7 +56,7 @@ function vacancyFingerprint(result) {
 
 export function mergeSearchResults(...groups) {
   const seenUrls = new Set();
-  const seenCrossSourceFingerprints = new Set();
+  const fingerprintsBySource = new Map();
   const merged = [];
 
   for (const result of groups.flat()) {
@@ -65,10 +65,13 @@ export function mergeSearchResults(...groups) {
     if (seenUrls.has(urlKey)) continue;
 
     const fingerprint = vacancyFingerprint(result);
-    if (seenCrossSourceFingerprints.has(fingerprint)) continue;
+    const source = normalized(result.source);
+    const existingSources = fingerprintsBySource.get(fingerprint) || new Set();
+    if (existingSources.size > 0 && !existingSources.has(source)) continue;
 
     seenUrls.add(urlKey);
-    seenCrossSourceFingerprints.add(fingerprint);
+    existingSources.add(source);
+    fingerprintsBySource.set(fingerprint, existingSources);
     merged.push(result);
   }
 
