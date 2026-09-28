@@ -3,15 +3,12 @@ import { expect, test } from "@playwright/test";
 const TEST_QUERY = "QA инженер";
 const firstJob = {
   id: "hh-page-1",
-  title: "QA Engineer — Page 1",
-  company: "Example Product",
-  salary: "120000 RUB",
-  location: "Москва",
-  experience: "1–3 года",
+  name: "QA Engineer — Page 1",
   published_at: "2026-09-20T10:00:00+0300",
   alternate_url: "https://hh.example.test/vacancy/1",
   area: { name: "Москва" },
   employer: { name: "Example Product" },
+  experience: { name: "1–3 года" },
   tags: ["QA"],
 };
 
