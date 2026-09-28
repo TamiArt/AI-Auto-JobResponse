@@ -22,6 +22,6 @@ test("search source policy is a typed module with the required named export", ()
 
 test("search service resolves the policy as a TypeScript module", () => {
   const source = fs.readFileSync(searchService, "utf8");
-  assert.match(source, /import\s*\{[^}]*AUTOMATIC_FIRST_PAGE_SOURCES[^}]*\}\s*from\s*["']\.\/sourceRequestPolicy["']/s);
+  assert.match(source, /import\s*\{[^}]*AUTOMATIC_FIRST_PAGE_SOURCES[^}]*\}\s*from\s*["']\.\/sourceRequestPolicy.ts["']/s);
   assert.doesNotMatch(source, /from\s*["']\.\/sourceRequestPolicy\.js["']/);
 });
