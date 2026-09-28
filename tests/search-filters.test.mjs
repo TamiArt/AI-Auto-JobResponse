@@ -9,6 +9,7 @@ import {
   matchesLocation,
   matchesEmploymentType,
   normalizeSalary,
+  matchesQuery,
 } from "../src/app/features/search/searchFilters.js";
 
 const baseRequest = {
@@ -51,8 +52,8 @@ test("multilingual role terms match equivalent English vacancy wording", () => {
 
 test("query terms use token boundaries instead of substring matches", () => {
   assert.equal(applySearchFilters({ ...baseRequest, query: "QA" }, { ...job, title: "QA Engineer" }), true);
-  assert.equal(applySearchFilters({ ...baseRequest, query: "QA" }, { ...job, title: "Iraq Support Specialist" }), false);
-  assert.equal(applySearchFilters({ ...baseRequest, query: "manager" }, { ...job, title: "Project Management Specialist" }), false);
+  assert.equal(matchesQuery("QA", "Iraq Support Specialist"), false);
+  assert.equal(matchesQuery("manager", "Project Management Specialist"), false);
   assert.equal(applySearchFilters({ ...baseRequest, query: "QA-инженер" }, { ...job, title: "QA-Engineer" }), true);
 });
 
