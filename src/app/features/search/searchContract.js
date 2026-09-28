@@ -26,7 +26,7 @@ export function isSearchResult(value) {
 }
 
 function normalized(value) {
-  return String(value || "").toLocaleLowerCase("ru-RU").replace(/ё/g, "е").trim();
+  return String(value || "").toLocaleLowerCase("ru-RU").replace(/ё/g, "е").replace(/[\u2013\u2014]/g, "-").replace(/[^\p{L}\p{N}]+/gu, " ").trim();
 }
 
 const TRACKING_PARAMS = new Set([
@@ -50,15 +50,25 @@ export function canonicalUrl(value) {
   }
 }
 
+function vacancyFingerprint(result) {
+  return [normalized(result.title), normalized(result.company), normalized(result.location)].join("|");
+}
+
 export function mergeSearchResults(...groups) {
-  const seen = new Set();
+  const seenUrls = new Set();
+  const seenCrossSourceFingerprints = new Set();
   const merged = [];
 
   for (const result of groups.flat()) {
     if (!isSearchResult(result)) continue;
-    const key = canonicalUrl(result.url) || `${normalized(result.title)}|${normalized(result.company)}`;
-    if (seen.has(key)) continue;
-    seen.add(key);
+    const urlKey = canonicalUrl(result.url);
+    if (seenUrls.has(urlKey)) continue;
+
+    const fingerprint = vacancyFingerprint(result);
+    if (seenCrossSourceFingerprints.has(fingerprint)) continue;
+
+    seenUrls.add(urlKey);
+    seenCrossSourceFingerprints.add(fingerprint);
     merged.push(result);
   }
 
