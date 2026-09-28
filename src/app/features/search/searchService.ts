@@ -5,7 +5,7 @@ import { applySearchFilters, inferEmploymentType, inferWorkMode, matchesExperien
 import { buildHhSearchParams } from "./hhRequestPolicy.js";
 
 export type AtsJobSource = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "recruitee" | "workable";
-export type FeedJobSource = "trudvsem" | "remoteok" | "weworkremotely" | "remotive" | "jobicy";
+export type FeedJobSource = "trudvsem" | "remoteok" | "weworkremotely" | "remotive" | "jobicy" | "remocate";
 export type RealJobSource = FeedJobSource | "hh" | "arbeitnow" | "telegram" | AtsJobSource;
 export type SearchSource = RealJobSource | "ats";
 
@@ -43,7 +43,7 @@ interface AdapterResult { results: SearchResult[]; nextHhPage: number | null; re
 const REQUEST_TIMEOUT_MS = 35_000;
 const CAPABILITY_TIMEOUT_MS = 1_500;
 const ATS_SOURCES = new Set<AtsJobSource>(["greenhouse", "lever", "ashby", "smartrecruiters", "recruitee", "workable"]);
-const BACKEND_REQUIRED_SOURCES = new Set<SearchSource>(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats", "telegram"]);
+const BACKEND_REQUIRED_SOURCES = new Set<SearchSource>(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "ats", "telegram"]);
 let backendCapability: Promise<boolean> | null = null;
 
 function formatDate(timestamp: number): string { return timestamp ? new Intl.DateTimeFormat("ru-RU", { day: "2-digit", month: "short", year: "numeric" }).format(new Date(timestamp)) : "Дата не указана"; }
