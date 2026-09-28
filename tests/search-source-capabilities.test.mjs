@@ -11,6 +11,7 @@ test("source capability registry describes acquisition mode and filters", () => 
   const remoteok = getSourceCapability("remoteok");
   assert.equal(remoteok?.acquisition, "snapshot");
   assert.equal(remoteok?.supportsPagination, false);
+  assert.equal(getSourceCapability("trudvsem")?.supportsPagination, false);
 
   const remocate = getSourceCapability("remocate");
   assert.equal(remocate?.supportsQuery, true);
