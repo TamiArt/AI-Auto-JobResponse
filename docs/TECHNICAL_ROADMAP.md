@@ -96,7 +96,7 @@ Telegram является отдельным источником ваканси
 
 - [x] HH salary upstream narrowing removed: JOBOS uses HH `label=with_salary` only when salary filtering is active and applies the authoritative exact range/currency filter after normalization.
 
-- [ ] Ввести source capabilities: `supportsRegion`, `supportsSalary`, `supportsRemote`, `supportsPagination`, `searchMode`, currency semantics.
+- [x] Ввести source capabilities: acquisition mode, supported filters, pagination semantics and cache/search notes.
 - [x] Нормализовать location/remote semantics.
 - [x] Нормализовать salary: amount/range/currency/period вместо фильтрации форматированной строки.
 - [x] Не применять RUB threshold к источнику, если зарплата в другой валюте без корректной конвертации.
@@ -114,7 +114,7 @@ Telegram является отдельным источником ваканси
 - [x] Фильтр по дате публикации.
 - [x] Сортировка по дате/релевантности/зарплате.
 - [ ] Пагинация/подгрузка для источников, которые её поддерживают.
-- [ ] Карточка/панель деталей вакансии без потери оригинальной ссылки.
+- [x] Карточка/панель деталей вакансии без потери оригинальной ссылки.
 - [x] Понятное отображение stale cache и частично недоступных источников.
 
 ## Источники
@@ -192,7 +192,7 @@ Search and matching are separate product modes. Ordinary Search must not silentl
 9. Verify result filters against real payloads.
 10. Make source capabilities/errors/cache freshness visible to the user.
 11. Add publication-date filtering, sorting, load-more/pagination and vacancy details.
-12. Then strengthen Career Profile → separate matching → explainable compatibility.
+12. Career Profile → separate matching → explainable compatibility foundation is implemented; next strengthen requirement extraction and profile-fact workflows.
 13. Then expand Application Tracker, persistent user data and Telegram Mini App synchronization.
 
 ## Explicit product invariants
@@ -260,17 +260,17 @@ A production task is done only when all applicable conditions are true:
 ### Phase A — Search correctness
 - [ ] Real upstream verification for every active source.
 - [ ] Real-response fixtures and regression tests.
-- [ ] Source capabilities and error visibility.
+- [x] Source capabilities and error visibility.
 - [ ] Correct salary/location/work-mode/employment semantics.
 - [ ] Robust cross-source deduplication.
 
 ### Phase B — Search UX
 - [ ] Source filter/status.
-- [ ] Publication-date filter.
-- [ ] Sorting.
+- [x] Publication-date filter.
+- [x] Sorting.
 - [ ] Load-more/pagination.
-- [ ] Vacancy details.
-- [ ] Stale-cache indicators.
+- [x] Vacancy details.
+- [x] Stale-cache indicators.
 
 ### Phase C — Career Intelligence
 - [ ] Career Profile data model.
