@@ -163,11 +163,24 @@ async function fetchRemotive(query) {
 async function fetchRemocate(query) {
   const normalizedQuery = String(query || "").trim();
   if (!normalizedQuery) return { results: [], meta: { lastUpdated: Date.now(), nextRefresh: Date.now() + REMOCATE_CACHE_MS, refreshIntervalMs: REMOCATE_CACHE_MS, cached: false, stale: false } };
-  const html = await fetchWithTimeout(`${REMOCATE_URL}?q=${encodeURIComponent(normalizedQuery)}`, {
-    parse: "text",
-    headers: { Accept: "text/html, application/xhtml+xml", "User-Agent": "JOBOS-AI/1.0 (+https://github.com/TamiArt/AI-Auto-JobResponse)" },
+  const cacheKey = `remocate:${normalizedQuery.toLocaleLowerCase()}`;
+  const cached = await fetchCachedWithMeta(cacheKey, REMOCATE_CACHE_MS, async () => {
+    const html = await fetchWithTimeout(`${REMOCATE_URL}?q=${encodeURIComponent(normalizedQuery)}`, {
+      parse: "text",
+      headers: { Accept: "text/html, application/xhtml+xml", "User-Agent": "JOBOS-AI/1.0 (+https://github.com/TamiArt/AI-Auto-JobResponse)" },
+    });
+    return normalizeRemocateHtml(html, normalizedQuery);
   });
-  return { results: normalizeRemocateHtml(html, normalizedQuery), meta: { lastUpdated: Date.now(), nextRefresh: Date.now() + REMOCATE_CACHE_MS, refreshIntervalMs: REMOCATE_CACHE_MS, cached: false, stale: false } };
+  return {
+    results: cached.value,
+    meta: {
+      lastUpdated: cached.lastUpdated,
+      nextRefresh: cached.nextRefresh,
+      refreshIntervalMs: cached.refreshIntervalMs,
+      cached: cached.cached,
+      stale: cached.stale,
+    },
+  };
 }
 
 async function fetchTelegramChannel(channel) {
