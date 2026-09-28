@@ -4,6 +4,21 @@ function normalizeText(value) {
 
 const WORK_MODE_SIGNALS = /remote|удален|удалён|дистанцион|work from home|wfh/;
 const HYBRID_SIGNALS = /hybrid|гибрид/;
+const QUERY_TERM_ALIASES = new Map([
+  ["инженер", ["инженер", "engineer"]],
+  ["инженера", ["инженер", "engineer"]],
+  ["инженеры", ["инженер", "engineer"]],
+  ["разработчик", ["разработчик", "developer", "software engineer"]],
+  ["разработчики", ["разработчик", "developer", "software engineer"]],
+  ["тестировщик", ["тестировщик", "tester", "qa", "quality assurance"]],
+  ["тестировщикa", ["тестировщик", "tester", "qa", "quality assurance"]],
+  ["тестирование", ["тестирование", "testing", "qa", "quality assurance"]],
+  ["дизайнер", ["дизайнер", "designer", "design"]],
+  ["аналитик", ["аналитик", "analyst", "analytics"]],
+  ["менеджер", ["менеджер", "manager"]],
+  ["программист", ["программист", "programmer", "developer", "engineer"]],
+]);
+
 const EMPLOYMENT_SIGNALS = {
   internship: /intern|стаж|trainee|практик/,
   partTime: /part.?time|частич|неполн/,
@@ -13,7 +28,10 @@ const EMPLOYMENT_SIGNALS = {
 export function matchesQuery(query, ...values) {
   const terms = normalizeText(query).split(/\s+/).filter(Boolean);
   const haystack = normalizeText(values.filter(Boolean).join(" "));
-  return terms.every((term) => haystack.includes(term));
+  return terms.every((term) => {
+    const aliases = QUERY_TERM_ALIASES.get(term) || [term];
+    return aliases.some((alias) => haystack.includes(alias));
+  });
 }
 
 export function matchesArea(areaId, location, source) {
