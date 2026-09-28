@@ -4,7 +4,7 @@ import {
   buildBffSourcePath,
   isSnapshotBffSource,
   SNAPSHOT_BFF_SOURCES,
-} from "../src/app/features/search/sourceRequestPolicy.js";
+} from "../src/app/features/search/sourceRequestPolicy.ts";
 
 test("snapshot source URLs never depend on the user query", () => {
   for (const source of SNAPSHOT_BFF_SOURCES) {
