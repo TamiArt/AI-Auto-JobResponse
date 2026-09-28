@@ -42,7 +42,6 @@ test("mergeSearchResults removes duplicates and sorts newest first", () => {
   assert.deepEqual(merged.map((item) => item.id), ["recent", "old"]);
 });
 
-
 test("mergeSearchResults deduplicates equivalent URL spellings", () => {
   const first = result({ id: "first", url: "https://example.test/vacancy/42#apply", publishedTimestamp: 20 });
   const second = result({ id: "second", title: "QA Engineer Updated", url: "https://EXAMPLE.test:443/vacancy/42/", publishedTimestamp: 10 });
@@ -56,8 +55,20 @@ test("mergeSearchResults ignores common tracking parameters when deduplicating U
   assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first"]);
 });
 
-test("mergeSearchResults keeps distinct vacancy URLs even when title and company match", () => {
+test("mergeSearchResults keeps distinct vacancy URLs from the same source", () => {
   const first = result({ id: "first", url: "https://example.test/vacancy/1" });
   const second = result({ id: "second", url: "https://example.test/vacancy/2" });
+  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first", "second"]);
+});
+
+test("mergeSearchResults removes the same vacancy fingerprint when it comes from another source", () => {
+  const hh = result({ id: "hh-1", source: "hh", url: "https://hh.example/vacancy/1", publishedTimestamp: 20 });
+  const ats = result({ id: "ats-1", source: "greenhouse", url: "https://boards.example/jobs/1", publishedTimestamp: 10 });
+  assert.deepEqual(mergeSearchResults([hh, ats]).map((item) => item.id), ["hh-1"]);
+});
+
+test("mergeSearchResults keeps two distinct vacancies with the same title and company when their locations differ", () => {
+  const first = result({ id: "first", source: "hh", location: "Москва", url: "https://example.test/vacancy/1" });
+  const second = result({ id: "second", source: "greenhouse", location: "Санкт-Петербург", url: "https://example.test/vacancy/2" });
   assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first", "second"]);
 });
