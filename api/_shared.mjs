@@ -118,7 +118,7 @@ async function loadPublicSnapshot(source) {
 async function loadRemocate(url) {
   const query = String(url.searchParams.get("q") || "").trim();
   if (!query) return { status: 400, body: { error: "query_required" } };
-  const upstream = await fetchWithTimeout(`${API_URLS.remocate}?q=${encodeURIComponent(query)}`, { headers: { "User-Agent": "JOBOS-AI/1.0 (+https://github.com/TamiArt/AI-Auto-JobResponse)" } , parse: "text" });
+  const upstream = await fetchWithTimeout(`${API_URLS.remocate}?q=${encodeURIComponent(query)}`, { headers: { Accept: "text/html, application/xhtml+xml", "User-Agent": "JOBOS-AI/1.0 (+https://github.com/TamiArt/AI-Auto-JobResponse)" }, parse: "text" });
   const results = filterRemocateResults(normalizeRemocateHtml(upstream, query), query);
   return { status: 200, body: { results, meta: feedMeta("remocate") } };
 }
