@@ -38,6 +38,7 @@ npm run check:full
 - We Work Remotely;
 - Jobicy;
 - Remotive;
+- Remocate;
 - Greenhouse;
 - Lever;
 - Ashby;
@@ -62,6 +63,7 @@ ATS registry содержит 34 публичных employer boards и расш�
 - `/api/jobs/weworkremotely`;
 - `/api/jobs/remotive`;
 - `/api/jobs/jobicy`;
+- `/api/jobs/remocate`;
 - `/api/jobs/ats`;
 - `/api/telegram/auth` — server-side validation of Telegram Mini App `initData`.
 
@@ -167,7 +169,7 @@ Every meaningful product/architecture change must update the roadmap when it cha
 - architecture constraints;
 - future work or implementation order.
 
-Every future agent must read both files before making architectural changes.
+Every future agent must read both files before making architectural changes. The latest full audit is recorded in `docs/FULL_CHECKUP_2026-09-28.md`.
 
 ## Надёжность
 
@@ -214,7 +216,7 @@ server/
 src/app/features/search/
   SearchPanel.tsx
   searchService.ts
-  sourceRequestPolicy.js
+  sourceRequestPolicy.ts
   searchContract.js
   searchStorage.ts
 ```
