@@ -2,7 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { SOURCE_NAMES, SNAPSHOT_SOURCES } from "../api/_shared.mjs";
-import { SNAPSHOT_BFF_SOURCES, buildBffSourcePath } from "../src/app/features/search/sourceRequestPolicy.js";
+import { SNAPSHOT_BFF_SOURCES, buildBffSourcePath } from "../src/app/features/search/sourceRequestPolicy.ts";
 
 const ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const searchService = fs.readFileSync(path.join(ROOT, "src/app/features/search/searchService.ts"), "utf8");
