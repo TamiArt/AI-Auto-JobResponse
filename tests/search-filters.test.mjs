@@ -10,6 +10,7 @@ import {
   matchesEmploymentType,
   normalizeSalary,
   matchesQuery,
+  matchesPublishedWithin,
 } from "../src/app/features/search/searchFilters.js";
 
 const baseRequest = {
@@ -142,4 +143,13 @@ test("salary normalization preserves decimal salaries and parses ranges", () => 
   assert.equal(normalizeSalary("$120k/year").min, 120000);
   assert.equal(normalizeSalary("£45,000 - £55,000 per year").min, 45000);
   assert.equal(normalizeSalary("£45,000 - £55,000 per year").max, 55000);
+});
+
+
+test("publication date filter accepts recent jobs and rejects stale jobs", () => {
+  const now = 1_800_000_000_000;
+  assert.equal(matchesPublishedWithin({ publishedWithin: "24h" }, now - 12 * 60 * 60 * 1000, now), true);
+  assert.equal(matchesPublishedWithin({ publishedWithin: "24h" }, now - 2 * 24 * 60 * 60 * 1000, now), false);
+  assert.equal(matchesPublishedWithin({ publishedWithin: "7d" }, now - 6 * 24 * 60 * 60 * 1000, now), true);
+  assert.equal(matchesPublishedWithin({ publishedWithin: "any" }, now - 365 * 24 * 60 * 60 * 1000, now), true);
 });
