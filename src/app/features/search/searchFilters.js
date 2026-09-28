@@ -27,15 +27,14 @@ const EMPLOYMENT_SIGNALS = {
 };
 
 function normalizeQueryText(value) {
-  return normalizeText(value).replace(/[-–—_/]+/g, " ").replace(/\s+/g, " ").trim();
+  return normalizeText(value).replace(/[-–—_/]+/g, " ").replace(/[^\p{L}\p{N}]+/gu, " ").replace(/\s+/g, " ").trim();
 }
 
 function containsQueryPhrase(haystack, phrase) {
   const normalizedHaystack = normalizeQueryText(haystack);
   const normalizedPhrase = normalizeQueryText(phrase);
   if (!normalizedPhrase) return false;
-  const escapedPhrase = normalizedPhrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  return new RegExp("(^|[^\\p{L}\\p{N}])" + escapedPhrase + "(?=$|[^\\p{L}\\p{N}])", "iu").test(normalizedHaystack);
+  return (" " + normalizedHaystack + " ").includes(" " + normalizedPhrase + " ");
 }
 
 export function matchesQuery(query, ...values) {
@@ -45,6 +44,7 @@ export function matchesQuery(query, ...values) {
     const aliases = QUERY_TERM_ALIASES.get(term) || [term];
     return aliases.some((alias) => containsQueryPhrase(haystack, alias));
   });
+}
 
 export function matchesArea(areaId, location, source) {
   if (source && source !== "hh" && source !== "trudvsem") return true;
