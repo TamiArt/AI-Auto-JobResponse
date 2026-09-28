@@ -166,6 +166,14 @@ export function matchesExperience(filter, value) {
   return /более 6|6\+|7 лет|8 лет|9 лет|10 лет|more than 6|senior/.test(text);
 }
 
+export function matchesPublishedWithin(request, publishedTimestamp, now = Date.now()) {
+  const filter = request.publishedWithin || "any";
+  if (filter === "any") return true;
+  const age = now - Number(publishedTimestamp);
+  const limits = { "24h": 24 * 60 * 60 * 1000, "7d": 7 * 24 * 60 * 60 * 1000, "30d": 30 * 24 * 60 * 60 * 1000 };
+  return Number.isFinite(age) && age >= 0 && age <= limits[filter];
+}
+
 export function applySearchFilters(request, item) {
   return matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || []))
     && matchesArea(request.areaId, item.location, item.source)
@@ -173,5 +181,6 @@ export function applySearchFilters(request, item) {
     && matchesSalary(request, item.salary, item.normalizedSalary)
     && matchesWorkMode(request, item)
     && matchesLocation(request, item)
-    && matchesEmploymentType(request, item);
+    && matchesEmploymentType(request, item)
+    && matchesPublishedWithin(request, item.publishedTimestamp);
 }
