@@ -97,13 +97,13 @@ Telegram является отдельным источником ваканси
 - [x] HH salary upstream narrowing removed: JOBOS uses HH `label=with_salary` only when salary filtering is active and applies the authoritative exact range/currency filter after normalization.
 
 - [ ] Ввести source capabilities: `supportsRegion`, `supportsSalary`, `supportsRemote`, `supportsPagination`, `searchMode`, currency semantics.
-- [ ] Нормализовать location/remote semantics.
-- [ ] Нормализовать salary: amount/range/currency/period вместо фильтрации форматированной строки.
-- [ ] Не применять RUB threshold к источнику, если зарплата в другой валюте без корректной конвертации.
-- [ ] Улучшить query normalization: RU/EN aliases, ё/е, punctuation, common role synonyms.
+- [x] Нормализовать location/remote semantics.
+- [x] Нормализовать salary: amount/range/currency/period вместо фильтрации форматированной строки.
+- [x] Не применять RUB threshold к источнику, если зарплата в другой валюте без корректной конвертации.
+- [x] Улучшить query normalization: RU/EN aliases, ё/е, punctuation, common role synonyms.
 - [ ] Улучшить dedup между агрегаторами и employer ATS: canonical URL + company/title/location fingerprint.
-- [ ] Определить единый порядок сортировки и обработку вакансий без даты.
-- [ ] Сделать source errors/capabilities понятными пользователю.
+- [x] Определить единый порядок сортировки и обработку вакансий без даты.
+- [x] Сделать source errors понятными пользователю; capabilities остаются отдельным следующим шагом.
 
 ## Search UX
 
@@ -111,11 +111,11 @@ Telegram является отдельным источником ваканси
 - [x] Remote / hybrid / onsite filter.
 - [x] Employment type filter.
 - [x] Salary range filter with currency-aware normalization (from/to; unknown salary excluded when salary filter is active).
-- [ ] Фильтр по дате публикации.
-- [ ] Сортировка по дате/релевантности/зарплате.
+- [x] Фильтр по дате публикации.
+- [x] Сортировка по дате/релевантности/зарплате.
 - [ ] Пагинация/подгрузка для источников, которые её поддерживают.
 - [ ] Карточка/панель деталей вакансии без потери оригинальной ссылки.
-- [ ] Понятное отображение stale cache и частично недоступных источников.
+- [x] Понятное отображение stale cache и частично недоступных источников.
 
 ## Источники
 
