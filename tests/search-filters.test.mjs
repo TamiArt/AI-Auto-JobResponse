@@ -42,6 +42,12 @@ test("canonical QA query matches title plus Russian description", () => {
   assert.equal(applySearchFilters(baseRequest, job), true);
 });
 
+test("multilingual role terms match equivalent English vacancy wording", () => {
+  assert.equal(applySearchFilters({ ...baseRequest, query: "QA инженер" }, { ...job, title: "QA Engineer", description: "Quality assurance" }), true);
+  assert.equal(applySearchFilters({ ...baseRequest, query: "тестировщик" }, { ...job, title: "Software Tester" }), true);
+  assert.equal(applySearchFilters({ ...baseRequest, query: "разработчик" }, { ...job, title: "Software Developer" }), true);
+});
+
 test("area 1 accepts Moscow but excludes Moscow region", () => {
   assert.equal(matchesArea("1", "Москва"), true);
   assert.equal(matchesArea("1", "Московская область"), false);
