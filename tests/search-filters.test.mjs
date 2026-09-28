@@ -43,7 +43,7 @@ test("canonical QA query matches title plus Russian description", () => {
 });
 
 test("multilingual role terms match equivalent English vacancy wording", () => {
-  assert.equal(applySearchFilters({ ...baseRequest, query: "QA инженер" }, { ...job, title: "QA Engineer", location: "Remote", source: "remoteok", description: "Quality assurance" }), true);
+  assert.equal(applySearchFilters({ ...baseRequest, query: "QA инженер" }, { ...job, title: "QA Engineer", location: "Remote", source: "remoteok", description: "Quality assurance" }), true);\n  assert.equal(applySearchFilters({ ...baseRequest, query: "QA-инженер" }, { ...job, title: "Quality Assurance Engineer", location: "Remote", source: "remoteok", description: "Quality assurance" }), true);
   assert.equal(applySearchFilters({ ...baseRequest, query: "тестировщик" }, { ...job, title: "Software Tester" }), true);
   assert.equal(applySearchFilters({ ...baseRequest, query: "разработчик" }, { ...job, title: "Software Developer" }), true);
 });
