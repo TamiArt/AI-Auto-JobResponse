@@ -16,6 +16,7 @@ const expectedBackendSources = [
   "remotive",
   "jobicy",
   "arbeitnow",
+  "remocate",
   "ats",
   "telegram",
 ];
@@ -27,6 +28,7 @@ const expectedRealSources = [
   "remotive",
   "jobicy",
   "arbeitnow",
+  "remocate",
   "telegram",
   "greenhouse",
   "lever",
@@ -92,7 +94,7 @@ for (const source of expectedSnapshotSources) {
   assertPolicyUrl(source, "QA инженер + automation", false);
 }
 
-for (const source of ["trudvsem", "telegram"]) {
+for (const source of ["trudvsem", "remocate", "telegram"]) {
   assertPolicyUrl(source, "QA инженер + automation", true);
 }
 
