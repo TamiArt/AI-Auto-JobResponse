@@ -7,5 +7,5 @@ test("local production server exposes the Remocate search route", async () => {
   assert.match(source, /from ["']\.\/remocate\.mjs["']/);
   assert.match(source, /REMOCATE_URL = ["']https:\/\/www\.remocate\.app\/["']/);
   assert.match(source, /source === ["']remocate["']/);
-  assert.match(source, /url\.pathname === ["']\/api\/jobs\/remocate["']/);
+  assert.match(source, /url\.pathname === ["']\/api\/jobs\/remocate["']/);\n  assert.match(source, /const cacheKey = `remocate:\\$\\{normalizedQuery\\.toLocaleLowerCase\\(\\)\\}`;/);\n  assert.match(source, /fetchCachedWithMeta\\(cacheKey, REMOCATE_CACHE_MS/);\n  assert.match(source, /cached\\.stale/);
 });
