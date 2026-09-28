@@ -49,6 +49,13 @@ test("multilingual role terms match equivalent English vacancy wording", () => {
   assert.equal(applySearchFilters({ ...baseRequest, query: "разработчик" }, { ...job, title: "Software Developer" }), true);
 });
 
+test("query terms use token boundaries instead of substring matches", () => {
+  assert.equal(applySearchFilters({ ...baseRequest, query: "QA" }, { ...job, title: "QA Engineer" }), true);
+  assert.equal(applySearchFilters({ ...baseRequest, query: "QA" }, { ...job, title: "Iraq Support Specialist" }), false);
+  assert.equal(applySearchFilters({ ...baseRequest, query: "manager" }, { ...job, title: "Project Management Specialist" }), false);
+  assert.equal(applySearchFilters({ ...baseRequest, query: "QA-инженер" }, { ...job, title: "QA-Engineer" }), true);
+});
+
 test("area 1 accepts Moscow but excludes Moscow region", () => {
   assert.equal(matchesArea("1", "Москва"), true);
   assert.equal(matchesArea("1", "Московская область"), false);
