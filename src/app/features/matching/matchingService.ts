@@ -106,15 +106,15 @@ function workModeCriterion(profile: CareerProfile, job: SearchResult): MatchCrit
 function locationCriterion(profile: CareerProfile, job: SearchResult): MatchCriterion {
   const profileLocation = normalize(profile.location);
   if (!profileLocation) {
-    return { id: "location", label: "Локация", status: "unknown", score: 0, maxScore: 10, note: "Локация в профиле не задана." };
+    return { id: "location", label: "Локация", status: "unknown", score: 0, maxScore: 15, note: "Локация в профиле не задана." };
   }
   if (!job.location || !normalize(job.location)) {
-    return { id: "location", label: "Локация", status: "unknown", score: 0, maxScore: 10, note: "Локация вакансии не указана." };
+    return { id: "location", label: "Локация", status: "unknown", score: 0, maxScore: 15, note: "Локация вакансии не указана." };
   }
   if (containsPhrase(normalize(job.location), profile.location)) {
-    return { id: "location", label: "Локация", status: "matched", score: 10, maxScore: 10, evidence: job.location };
+    return { id: "location", label: "Локация", status: "matched", score: 15, maxScore: 15, evidence: job.location };
   }
-  return { id: "location", label: "Локация", status: "mismatch", score: 0, maxScore: 10, evidence: job.location };
+  return { id: "location", label: "Локация", status: "mismatch", score: 0, maxScore: 15, evidence: job.location };
 }
 
 function headlineCriterion(profile: CareerProfile, text: string): MatchCriterion {
