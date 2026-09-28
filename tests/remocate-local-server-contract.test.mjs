@@ -4,11 +4,18 @@ import { readFile } from "node:fs/promises";
 
 test("local production server exposes the Remocate search route", async () => {
   const source = await readFile(new URL("../server/index.mjs", import.meta.url), "utf8");
-  assert.match(source, /from ["']\.\/remocate\.mjs["']/);
-  assert.match(source, /REMOCATE_URL = ["']https:\/\/www\.remocate\.app\/["']/);
-  assert.match(source, /source === ["']remocate["']/);
-  assert.match(source, /url\.pathname === ["']\/api\/jobs\/remocate["']/);
-  assert.ok(source.includes("const cacheKey = `remocate:${normalizedQuery.toLocaleLowerCase()}`;"));
-  assert.match(source, /fetchCachedWithMeta\(cacheKey, REMOCATE_CACHE_MS/);
-  assert.match(source, /cached\.stale/);
+
+  const requiredSnippets = [
+    'from "./remocate.mjs"',
+    'REMOCATE_URL = "https://www.remocate.app/"',
+    'source === "remocate"',
+    'url.pathname === "/api/jobs/remocate"',
+    "const cacheKey = `remocate:${normalizedQuery.toLocaleLowerCase()}`;",
+    "fetchCachedWithMeta(cacheKey, REMOCATE_CACHE_MS",
+    "cached.stale",
+  ];
+
+  for (const snippet of requiredSnippets) {
+    assert.ok(source.includes(snippet), `server/index.mjs must contain: ${snippet}`);
+  }
 });
