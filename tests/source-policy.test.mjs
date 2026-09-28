@@ -17,4 +17,5 @@ test("snapshot source policy never sends search query upstream", () => {
 
 test("query-dependent sources keep the search query", () => {
   assert.equal(buildBffSourcePath("trudvsem", "QA engineer"), "/api/jobs?source=trudvsem&q=QA+engineer");
+  assert.equal(buildBffSourcePath("remocate", "QA engineer"), "/api/jobs?source=remocate&q=QA+engineer");
 });
