@@ -16,7 +16,27 @@ permissions:
   contents: read
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --prefer-offline --fetch-retries=5 --fetch-retry-factor=2
+
+      - name: Run fast preflight
+        run: npm run check:preflight
+
   verify:
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -27,6 +47,7 @@ jobs:
         uses: actions/setup-node@v5
         with:
           node-version: 22
+          cache: npm
 
       - name: Install dependencies
         run: npm install --no-audit --no-fund --prefer-offline --fetch-retries=5 --fetch-retry-factor=2
