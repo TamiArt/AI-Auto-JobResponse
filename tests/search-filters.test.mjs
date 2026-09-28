@@ -47,6 +47,14 @@ test("area 1 accepts Moscow but excludes Moscow region", () => {
   assert.equal(matchesArea("1", "Московская область"), false);
 });
 
+test("global sources are not discarded by the default local region", () => {
+  assert.equal(matchesArea("1", "Worldwide", "remoteok"), true);
+  assert.equal(matchesArea("1", "Berlin", "arbeitnow"), true);
+  assert.equal(matchesArea("1", "Remote", "remocate"), true);
+  assert.equal(matchesArea("1", "Москва", "hh"), true);
+  assert.equal(matchesArea("1", "Berlin", "hh"), false);
+});
+
 test("salary filter handles empty, currency mismatch and range overlap", () => {
   assert.equal(matchesSalary({ ...baseRequest, salaryFrom: "", salaryTo: "" }, "120000 USD"), true);
   assert.equal(matchesSalary({ ...baseRequest, salaryFrom: "100000", salaryCurrency: "USD" }, "120000 USD"), true);
