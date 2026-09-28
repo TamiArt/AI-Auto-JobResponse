@@ -20,7 +20,8 @@ test("search source policy is a typed module with the required named export", ()
   assert.match(policy, /export\s+function\s+buildBffSourcePath\b/);
 });
 
-test("search service imports the automatic first-page policy from the typed module", () => {
+test("search service resolves the policy as a TypeScript module", () => {
   const source = fs.readFileSync(searchService, "utf8");
-  assert.match(source, /import\s*\{[^}]*AUTOMATIC_FIRST_PAGE_SOURCES[^}]*\}\s*from\s*["']\.\/sourceRequestPolicy\.js["']/s);
+  assert.match(source, /import\s*\{[^}]*AUTOMATIC_FIRST_PAGE_SOURCES[^}]*\}\s*from\s*["']\.\/sourceRequestPolicy["']/s);
+  assert.doesNotMatch(source, /from\s*["']\.\/sourceRequestPolicy\.js["']/);
 });
