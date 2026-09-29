@@ -72,3 +72,54 @@ test("mergeSearchResults keeps two distinct vacancies with the same title and co
   const second = result({ id: "second", source: "greenhouse", location: "Санкт-Петербург", url: "https://example.test/vacancy/2" });
   assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first", "second"]);
 });
+
+
+test("mergeSearchResults uses the newest cross-source vacancy when duplicate order differs", () => {
+  const olderAts = result({
+    id: "ats-old",
+    source: "greenhouse",
+    title: "Python Developer",
+    company: "Example",
+    location: "Remote",
+    publishedTimestamp: 10,
+    url: "https://boards.example/jobs/old",
+  });
+  const newerHh = result({
+    id: "hh-new",
+    source: "hh",
+    title: "Python Developer",
+    company: "Example",
+    location: "Remote",
+    publishedTimestamp: 20,
+    url: "https://hh.example/vacancy/new",
+  });
+
+  assert.deepEqual(
+    mergeSearchResults([olderAts], [newerHh]).map((item) => item.id),
+    ["hh-new"],
+  );
+});
+
+test("mergeSearchResults does not fingerprint vacancies with an unknown location across sources", () => {
+  const first = result({
+    id: "first",
+    source: "hh",
+    title: "Python Developer",
+    company: "Example",
+    location: "Локация не указана",
+    url: "https://hh.example/vacancy/1",
+  });
+  const second = result({
+    id: "second",
+    source: "greenhouse",
+    title: "Python Developer",
+    company: "Example",
+    location: "Локация не указана",
+    url: "https://boards.example/jobs/2",
+  });
+
+  assert.deepEqual(
+    mergeSearchResults([first, second]).map((item) => item.id),
+    ["first", "second"],
+  );
+});
