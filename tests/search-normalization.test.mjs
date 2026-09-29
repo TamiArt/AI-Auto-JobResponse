@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { normalizeBffItems } from "../src/app/features/search/searchService.ts";
+import { normalizeArbeitnowPayload } from "../server/publicFeeds.mjs";
 
 const request = {
   query: "QA engineer",
@@ -69,4 +70,74 @@ test("BFF normalization applies authoritative client filters after normalization
     item({ id: "job-2", salary: "$60k–$65k per year", url: "https://example.com/jobs/2" }),
   ], "remoteok", { ...request, salaryFrom: "50000" });
   assert.deepEqual(results.map((result) => result.id), ["job-2"]);
+});
+
+
+test("Arbeitnow normalization keeps only real job-detail URLs", () => {
+  const results = normalizeArbeitnowPayload({
+    data: [
+      {
+        slug: "valid-role-123",
+        company_name: "Example GmbH",
+        title: "QA Engineer",
+        description: "QA role",
+        remote: true,
+        url: "https://www.arbeitnow.com/jobs/companies/example-gmbh/valid-role-123",
+        tags: ["Information technology"],
+        job_types: ["berufseinstieg"],
+        location: "Berlin",
+        created_at: 1790697640,
+      },
+      {
+        slug: "bad-url-456",
+        company_name: "Example GmbH",
+        title: "Backend Engineer",
+        description: "Backend role",
+        remote: false,
+        url: "https://www.example.com/",
+        tags: ["Software Engineering"],
+        job_types: ["Mid-senior"],
+        location: "Berlin",
+        created_at: 1790697640,
+      },
+    ],
+  });
+  assert.deepEqual(results.map((result) => result.id), ["arbeitnow-valid-role-123"]);
+  assert.equal(results[0].workMode, "remote");
+});
+
+test("Arbeitnow does not infer full-time from seniority-only job types", () => {
+  const [seniorityOnly] = normalizeArbeitnowPayload({
+    data: [{
+      slug: "seniority-only-123",
+      company_name: "Example GmbH",
+      title: "Software Engineer",
+      description: "Role",
+      remote: false,
+      url: "https://www.arbeitnow.com/view/seniority-only-123",
+      tags: ["Software Engineering"],
+      job_types: ["Mid-senior"],
+      location: "Berlin",
+      created_at: 1790697640,
+    }],
+  });
+  assert.equal(seniorityOnly.employmentType, undefined);
+});
+
+test("Arbeitnow preserves explicit full-time employment type", () => {
+  const [fullTime] = normalizeArbeitnowPayload({
+    data: [{
+      slug: "full-time-123",
+      company_name: "Example GmbH",
+      title: "Software Engineer",
+      description: "Role",
+      remote: false,
+      url: "https://www.arbeitnow.com/jobs/companies/example-gmbh/full-time-123",
+      tags: ["Software Engineering"],
+      job_types: ["Full-time", "Mid-senior"],
+      location: "Berlin",
+      created_at: 1790697640,
+    }],
+  });
+  assert.equal(fullTime.employmentType, "fullTime");
 });
