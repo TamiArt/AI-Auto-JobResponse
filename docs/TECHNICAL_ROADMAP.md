@@ -30,7 +30,7 @@
 - [x] Vercel и self-hosted runtime используют единый `ATS_CONCURRENCY` из registry.
 - [x] README синхронизирован с `/api/jobs/hh`, `/api/jobs/trudvsem-view` и snapshot cache policy.
 - [ ] Оптимизировать PWA icon и статические assets.
-- [ ] Добавить расширенный deployment smoke для публичного Vercel URL без расходования лимитированных upstream.
+- [x] Добавить расширенный deployment smoke для публичного Vercel URL без расходования лимитированных upstream (`npm run test:smoke:public`, `PUBLIC_URL=...`).
 
 ## Telegram job channels
 
