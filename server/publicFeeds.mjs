@@ -64,7 +64,9 @@ export function normalizeArbeitnowPayload(payload) {
     const slug = text(job?.slug);
     const url = safeUrl(job?.url);
     const title = text(job?.title);
-    if (!title || !url) return null;
+    const isArbeitnowJobUrl = /^https?:\/\/www?\.arbeitnow\.com\/(?:jobs\/companies\/|view\/)/i.test(url)
+      || /^https?:\/\/arbeitnow\.com\/(?:jobs\/companies\/|view\/)/i.test(url);
+    if (!title || !url || !isArbeitnowJobUrl) return null;
     const jobTypes = Array.isArray(job?.job_types) ? job.job_types.map(text).filter(Boolean) : [];
     return {
       id: `arbeitnow-${slug || url}`,
@@ -79,7 +81,11 @@ export function normalizeArbeitnowPayload(payload) {
       tags: [...(Array.isArray(job?.tags) ? job.tags.map(text) : []), ...jobTypes].filter(Boolean).slice(0, 8),
       description: text(job?.description),
       workMode: job?.remote ? "remote" : undefined,
-      employmentType: /part.?time|непол/i.test(jobTypes.join(" ")) ? "partTime" : /contract|freelance|контракт/i.test(jobTypes.join(" ")) ? "contract" : /intern|стаж|trainee/i.test(jobTypes.join(" ")) ? "internship" : jobTypes.length ? "fullTime" : undefined,
+      employmentType: /part.?time|непол/i.test(jobTypes.join(" ")) ? "partTime"
+        : /full.?time|vollzeit|полный.?день|полная.?занятость/i.test(jobTypes.join(" ")) ? "fullTime"
+        : /contract|freelance|контракт/i.test(jobTypes.join(" ")) ? "contract"
+        : /intern|стаж|trainee/i.test(jobTypes.join(" ")) ? "internship"
+        : undefined,
     };
   }).filter(Boolean);
 }
