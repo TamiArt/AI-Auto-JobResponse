@@ -107,6 +107,7 @@ Telegram является отдельным источником ваканси
 ### Verified upstream semantics — 2026-09-29
 
 - [x] Arbeitnow public API verified against the live response: data[].slug, company_name, title, description, remote, url, tags, job_types, location, created_at are present in the current feed.
+- [x] Remote OK public API verified against the live response: current records expose id/epoch/date/company/position/tags/description/location/apply_url/salary_min/salary_max/url; empty location and zero salary bounds are preserved as unknown rather than converted into factual values.
 - [x] Arbeitnow normalizer accepts only URLs that are actual Arbeitnow job-detail routes (/jobs/companies/... or /view/). A current live feed item was observed with a company homepage URL, so that item is rejected instead of being exposed as a vacancy link.
 - [x] Arbeitnow job_types is treated as mixed free-text metadata: seniority-only values do not become fullTime; explicit full-time/part-time/contract/internship signals are required before setting employmentType.
 - [ ] Full active-source verification remains open; this checkbox covers only the verified Arbeitnow semantics above.
