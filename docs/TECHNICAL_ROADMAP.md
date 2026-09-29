@@ -104,6 +104,13 @@ Telegram является отдельным источником ваканси
 
 ## Search correctness
 
+### Verified upstream semantics — 2026-09-29
+
+- [x] Arbeitnow public API verified against the live response: data[].slug, company_name, title, description, remote, url, tags, job_types, location, created_at are present in the current feed.
+- [x] Arbeitnow normalizer accepts only URLs that are actual Arbeitnow job-detail routes (/jobs/companies/... or /view/). A current live feed item was observed with a company homepage URL, so that item is rejected instead of being exposed as a vacancy link.
+- [x] Arbeitnow job_types is treated as mixed free-text metadata: seniority-only values do not become fullTime; explicit full-time/part-time/contract/internship signals are required before setting employmentType.
+- [ ] Full active-source verification remains open; this checkbox covers only the verified Arbeitnow semantics above.
+
 - [x] Jobicy salary normalizer preserves numeric bounds, ISO currency and `salaryPeriod` metadata from the public Jobs API.
 
 - [x] HH salary upstream narrowing removed: JOBOS uses HH `label=with_salary` only when salary filtering is active and applies the authoritative exact range/currency filter after normalization.
