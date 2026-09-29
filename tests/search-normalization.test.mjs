@@ -141,3 +141,18 @@ test("Arbeitnow preserves explicit full-time employment type", () => {
   });
   assert.equal(fullTime.employmentType, "fullTime");
 });
+
+
+test("Remote OK keeps an empty upstream location unknown", async () => {
+  const { normalizeRemoteOkPayload } = await import("../server/publicFeeds.mjs");
+  const [result] = normalizeRemoteOkPayload([{
+    id: "remoteok-location-1",
+    position: "Software Engineer",
+    company: "Example",
+    location: "",
+    url: "https://remoteok.com/remote-jobs/remoteok-location-1",
+    epoch: 1790697640,
+    tags: [],
+  }]);
+  assert.equal(result.location, "Локация не указана");
+});
