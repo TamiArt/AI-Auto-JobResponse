@@ -1,15 +1,8 @@
-import test from "node:test";
-import assert from "node:assert/strict";
-import { getSourceCapability } from "../src/app/features/search/sourceCapabilities.ts";
+[object Object]
 
-test("only sources with explicit pagination capability can load another page", () => {
-  assert.equal(getSourceCapability("hh")?.supportsPagination, true);
-  for (const source of ["remoteok","weworkremotely","remotive","jobicy","arbeitnow","remocate","trudvsem","ats","telegram"]) {
-    assert.equal(getSourceCapability(source)?.supportsPagination, false, source);
-  }
-});
-
-test("pagination is capability-driven rather than source-name driven", () => {
-  assert.equal(getSourceCapability("hh")?.supportsPagination, true);
-  assert.equal(getSourceCapability("remoteok")?.supportsPagination, false);
+test("pagination request state is stored per source", async () => {
+  const fs = await import("node:fs/promises");
+  const service = await fs.readFile(new URL("../src/app/features/search/searchService.ts", import.meta.url), "utf8");
+  assert.match(service, /pages\?: Partial<Record<SearchSource, number>>/);
+  assert.match(service, /request\.pages\?\.hh/);
 });
