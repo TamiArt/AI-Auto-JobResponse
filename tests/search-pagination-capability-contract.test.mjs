@@ -17,5 +17,16 @@ test("pagination capability is explicit for paginated and snapshot sources", asy
 test("search service keeps pagination state per source", async () => {
   const searchService = await readFile(SEARCH_SERVICE, "utf8");
   assert.match(searchService, /pages\?: Partial<Record<SearchSource, number>>/);
-  assert.match(searchService, /request\.pages\?\.hh/);
+  assert.match(
+    searchService,
+    /Object\.entries\(request\.pages \|\| \{\}\)\.some\(\(\[source, page\]\) => canLoadNextPage\(source as SearchSource\)/,
+  );
+  assert.match(
+    searchService,
+    /page: request\.pages\?\.hh \?\? request\.page \?\? 0/,
+  );
+  assert.match(
+    searchService,
+    /nextPages\[source\] = entry\.value\.response\.nextPage/,
+  );
 });
