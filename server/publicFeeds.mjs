@@ -1,4 +1,4 @@
-const DEFAULT_LOCATION = "Удалённо / Worldwide";
+const DEFAULT_LOCATION = "Локация не указана";
 
 function text(value) {
   return String(value ?? "").replace(/\s+/g, " ").trim();
