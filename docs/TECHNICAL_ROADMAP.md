@@ -113,7 +113,7 @@ Telegram является отдельным источником ваканси
 - [x] Нормализовать salary: amount/range/currency/period вместо фильтрации форматированной строки.
 - [x] Не применять RUB threshold к источнику, если зарплата в другой валюте без корректной конвертации.
 - [x] Улучшить query normalization: RU/EN aliases, ё/е, punctuation, common role synonyms.
-- [ ] Улучшить dedup между агрегаторами и employer ATS: canonical URL + company/title/location fingerprint.
+- [x] Улучшить dedup между агрегаторами и employer ATS: canonical URL + company/title/location fingerprint; cross-source fingerprinting игнорирует неизвестную локацию и выбирает более свежую запись независимо от порядка источников.
 - [x] Определить единый порядок сортировки и обработку вакансий без даты.
 - [x] Сделать source errors понятными пользователю; capabilities остаются отдельным следующим шагом.
 
