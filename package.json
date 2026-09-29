@@ -14,6 +14,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit",
     "test:contracts": "node --test tests/*.test.mjs",
     "test:smoke": "node scripts/smoke-server.mjs",
+    "test:smoke:public": "node scripts/smoke-public.mjs",
     "test:e2e": "playwright test",
     "test:search-policy": "node --test tests/search-source-policy-contract.test.mjs",
     "check:structure": "node scripts/check-structure.mjs",
