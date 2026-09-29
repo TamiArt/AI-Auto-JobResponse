@@ -32,6 +32,16 @@ test("pagination capability is explicit and cannot be inferred from acquisition 
   const sourceCapabilities = await readFile(CAPABILITIES, "utf8");
   assert.match(sourceCapabilities, /supportsPagination: true/);
   assert.match(sourceCapabilities, /supportsPagination: false/);
+  assert.match(
+    sourceCapabilities,
+    /hh: \{ acquisition: "query"[^}]*supportsPagination: true/,
+    "HH proves pagination can be enabled independently of query acquisition",
+  );
+  assert.match(
+    sourceCapabilities,
+    /remoteok: \{ acquisition: "snapshot"[^}]*supportsPagination: false/,
+    "Remote OK proves snapshot acquisition does not imply pagination",
+  );
 });
 
 test("search service keeps pagination metadata in the response contract", async () => {
