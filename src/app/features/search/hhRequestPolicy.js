@@ -2,7 +2,7 @@ export function buildHhSearchParams(request) {
   const params = new URLSearchParams({
     q: request.query,
     area: request.areaId,
-    page: String(Math.max(0, request.page ?? 0)),
+    page: String(Math.max(0, request.pages?.hh ?? request.page ?? 0)),
   });
 
   if (request.experience !== "any") params.set("experience", request.experience);
