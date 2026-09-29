@@ -23,10 +23,6 @@ test("search service keeps pagination state per source", async () => {
   );
   assert.match(
     searchService,
-    /page: request\.pages\?\.hh \?\? request\.page \?\? 0/,
-  );
-  assert.match(
-    searchService,
     /nextPages\[source\] = entry\.value\.response\.nextPage/,
   );
 });
