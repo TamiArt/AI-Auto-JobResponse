@@ -37,7 +37,7 @@ test("pagination capability is explicit and cannot be inferred from acquisition 
 
 test("search service keeps pagination metadata in the response contract", async () => {
   const searchService = await readFile(SEARCH_SERVICE, "utf8");
-  assert.match(searchService, /nextHhPage: number \| null/);
+  assert.match(searchService, /nextPages: Partial<Record<SearchSource, number>>/);
   assert.match(searchService, /page\?: number/);
   assert.match(searchService, /request\.page/);
 });
