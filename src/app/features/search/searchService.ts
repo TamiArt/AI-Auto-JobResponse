@@ -26,7 +26,7 @@ export interface SearchResult {
 
 export interface SearchRequest {
   query: string; areaId: string; salaryFrom: string; salaryTo?: string; salaryCurrency?: SalaryCurrency; workMode?: WorkModeFilter; location?: string; employmentType?: EmploymentTypeFilter;
-  experience: ExperienceFilter; publishedWithin?: PublishedWithinFilter; sortBy?: SearchSort; sources: SearchSource[]; telegramChannels?: string[]; page?: number;
+  experience: ExperienceFilter; publishedWithin?: PublishedWithinFilter; sortBy?: SearchSort; sources: SearchSource[]; telegramChannels?: string[]; page?: number; pages?: Partial<Record<SearchSource, number>>;
 }
 
 export interface SourceRefreshMeta { lastUpdated: number; nextRefresh: number; refreshIntervalMs: number; cached: boolean; stale: boolean; }
@@ -113,7 +113,8 @@ function canLoadNextPage(source: SearchSource): boolean {
 
 const adapters: Record<SearchSource, (request: SearchRequest) => Promise<AdapterResult>> = { trudvsem: (request) => searchBffFeed(request, "trudvsem"), remoteok: (request) => searchBffFeed(request, "remoteok"), weworkremotely: (request) => searchBffFeed(request, "weworkremotely"), remotive: (request) => searchBffFeed(request, "remotive"), jobicy: (request) => searchBffFeed(request, "jobicy"), remocate: (request) => searchBffFeed(request, "remocate"), telegram: searchTelegram, ats: searchAts, hh: searchHh, arbeitnow: searchArbeitnow, greenhouse: searchAts, lever: searchAts, ashby: searchAts, smartrecruiters: searchAts, recruitee: searchAts, workable: searchAts };
 export function mergeSearchResults(...groups: SearchResult[][]): SearchResult[] { return mergeContractResults(...groups) as SearchResult[]; }
-async function sourcesForRequest(request: SearchRequest): Promise<{ sources: SearchSource[]; backendAvailable: boolean }> { const backendAvailable = await detectBackend(); const requested = request.sources.filter((source) => backendAvailable || !BACKEND_REQUIRED_SOURCES.has(source)); if ((request.page ?? 0) > 0) {
+async function sourcesForRequest(request: SearchRequest): Promise<{ sources: SearchSource[]; backendAvailable: boolean }> { const backendAvailable = await detectBackend(); const requested = request.sources.filter((source) => backendAvailable || !BACKEND_REQUIRED_SOURCES.has(source)); const hasPerSourcePagination = Object.entries(request.pages || {}).some(([source, page]) => canLoadNextPage(source as SearchSource) && Number.isInteger(page) && (page as number) > 0);
+  if ((request.page ?? 0) > 0 || hasPerSourcePagination) {
     return {
       sources: requested.filter((source) => canLoadNextPage(source)),
       backendAvailable,
