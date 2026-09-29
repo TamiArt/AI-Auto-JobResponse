@@ -54,26 +54,44 @@ function vacancyFingerprint(result) {
   return [normalized(result.title), normalized(result.company), normalized(result.location)].join("|");
 }
 
+function isCrossSourceFingerprintEligible(result) {
+  const title = normalized(result.title);
+  const company = normalized(result.company);
+  const location = normalized(result.location);
+  return Boolean(
+    title &&
+    company &&
+    location &&
+    !["локация не указана", "location not specified", "не указано", "not specified"].includes(location),
+  );
+}
+
 export function mergeSearchResults(...groups) {
+  const candidates = groups
+    .flat()
+    .filter(isSearchResult)
+    .sort((a, b) => b.publishedTimestamp - a.publishedTimestamp);
+
   const seenUrls = new Set();
   const fingerprintsBySource = new Map();
   const merged = [];
 
-  for (const result of groups.flat()) {
-    if (!isSearchResult(result)) continue;
+  for (const result of candidates) {
     const urlKey = canonicalUrl(result.url);
     if (seenUrls.has(urlKey)) continue;
 
-    const fingerprint = vacancyFingerprint(result);
-    const source = normalized(result.source);
-    const existingSources = fingerprintsBySource.get(fingerprint) || new Set();
-    if (existingSources.size > 0 && !existingSources.has(source)) continue;
+    if (isCrossSourceFingerprintEligible(result)) {
+      const fingerprint = vacancyFingerprint(result);
+      const existingSources = fingerprintsBySource.get(fingerprint) || new Set();
+      const source = normalized(result.source);
+      if (existingSources.size > 0 && !existingSources.has(source)) continue;
+      existingSources.add(source);
+      fingerprintsBySource.set(fingerprint, existingSources);
+    }
 
     seenUrls.add(urlKey);
-    existingSources.add(source);
-    fingerprintsBySource.set(fingerprint, existingSources);
     merged.push(result);
   }
 
-  return merged.sort((a, b) => b.publishedTimestamp - a.publishedTimestamp);
+  return merged;
 }
