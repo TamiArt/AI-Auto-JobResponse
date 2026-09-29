@@ -121,7 +121,7 @@ Telegram является отдельным источником ваканси
 
 - [x] Universal capability-driven pagination orchestration: the search service gates additional pages by `supportsPagination`, while each source keeps its own page-request adapter. HH is the first paginated source.
 
-- [ ] Фильтр источников в результирующей выдаче.
+- [x] Фильтр источников в результирующей выдаче: пользователь может быстро переключать все результаты или конкретный источник, с количеством вакансий по каждому источнику.
 - [x] Remote / hybrid / onsite filter.
 - [x] Employment type filter.
 - [x] Salary range filter with currency-aware normalization (from/to; unknown salary excluded when salary filter is active).
