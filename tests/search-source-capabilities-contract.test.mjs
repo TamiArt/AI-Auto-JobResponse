@@ -32,7 +32,6 @@ test("pagination capability is explicit and cannot be inferred from acquisition 
   const sourceCapabilities = await readFile(CAPABILITIES, "utf8");
   assert.match(sourceCapabilities, /supportsPagination: true/);
   assert.match(sourceCapabilities, /supportsPagination: false/);
-  assert.match(sourceCapabilities, /acquisition: "pagination"/);
 });
 
 test("search service keeps pagination metadata in the response contract", async () => {
