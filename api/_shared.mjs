@@ -12,7 +12,7 @@ import {
 import { buildAtsUrl, filterAtsResults, normalizeAtsPayload } from "../server/atsFeeds.mjs";
 import { ATS_CONCURRENCY, ATS_EMPLOYERS } from "../server/atsRegistry.mjs";
 import { UPSTREAM_TIMEOUT_MS } from "../server/runtimeConfig.mjs";
-import { filterRemocateResults, normalizeRemocateHtml } from "../server/remocate.mjs";
+import { normalizeRemocateHtml } from "../server/remocate.mjs";
 
 const API_URLS = {
   trudvsem: "https://opendata.trudvsem.ru/api/v1/vacancies",
@@ -168,11 +168,6 @@ export async function handleSource(source, request, response) {
     if (source === "trudvsem") {
       const result = await loadTrudvsem(url);
       return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.trudvsem : 0);
-    }
-    if (source === "arbeitnow") {
-      const body = await loadPublicSnapshot(source);
-      const query = url.searchParams.get("q") || "";
-      return sendJson(response, 200, { ...body, results: filterPublicFeedResults(body.results, query) }, CACHE_SECONDS[source]);
     }
     if (!SNAPSHOT_SOURCE_SET.has(source)) return sendJson(response, 404, { error: "unsupported_source" });
     if (rejectSnapshotQuery(url, response)) return;
