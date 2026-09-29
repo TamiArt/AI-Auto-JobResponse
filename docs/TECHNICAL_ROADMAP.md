@@ -275,7 +275,7 @@ A production task is done only when all applicable conditions are true:
 - [ ] Real upstream verification for every active source.
 - [ ] Real-response fixtures and regression tests.
 - [x] Source capabilities and error visibility.
-- [ ] Correct salary/location/work-mode/employment semantics.
+- [x] Correct salary/location/work-mode/employment semantics: normalized BFF results now validate URL/timestamp, normalize salary/date, preserve unknown work-mode/employment as `unknown`, and apply authoritative client-side filters after normalization. Real upstream verification remains a separate checklist item.
 - [ ] Robust cross-source deduplication.
 
 ### Phase B — Search UX
