@@ -33,3 +33,9 @@ test("HH request preserves experience and normalizes page", () => {
   assert.equal(params.get("experience"), "between1And3");
   assert.equal(params.get("page"), "0");
 });
+
+
+test("HH request prefers a per-source page over the legacy shared page", () => {
+  const params = buildHhSearchParams({ ...base, page: 0, pages: { hh: 3 } });
+  assert.equal(params.get("page"), "3");
+});
