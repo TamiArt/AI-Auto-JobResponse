@@ -8,3 +8,8 @@ test("only sources with explicit pagination capability can load another page", (
     assert.equal(getSourceCapability(source)?.supportsPagination, false, source);
   }
 });
+
+test("pagination is capability-driven rather than source-name driven", () => {
+  assert.equal(getSourceCapability("hh")?.supportsPagination, true);
+  assert.equal(getSourceCapability("remoteok")?.supportsPagination, false);
+});
