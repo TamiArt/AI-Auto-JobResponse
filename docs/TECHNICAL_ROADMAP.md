@@ -119,6 +119,7 @@ Telegram является отдельным источником ваканси
 - [x] Jobicy salary normalizer preserves numeric bounds, ISO currency and `salaryPeriod` metadata from the public Jobs API.
 - [x] We Work Remotely public RSS semantics verified against the current source page: a public all-jobs RSS feed is available and requires attribution/link-back; the normalizer preserves RSS region/category/type/description when present and keeps WWR listings remote.
 - [x] Remote OK public feed semantics verified against the current source documentation: JSON/RSS feeds are public and require credit/link-back; the normalizer preserves the documented description field and remote-only source semantics without inventing employment type.
+- [x] ATS structured semantics verified for current public Greenhouse/Lever/Ashby/SmartRecruiters contracts where fields are exposed: description, workplace type and explicit employment type are preserved when supplied; unknown values remain unknown instead of being invented. Lever/Ashby/SmartRecruiters adapters now map their documented structured fields into the common contract.
 
 - [x] HH salary upstream narrowing removed: JOBOS uses HH `label=with_salary` only when salary filtering is active and applies the authoritative exact range/currency filter after normalization.
 
