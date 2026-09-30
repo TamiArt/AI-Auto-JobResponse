@@ -12,7 +12,24 @@ function safeUrl(value) {
   return /^https?:\/\//i.test(url) ? url : "";
 }
 
-function job({ provider, id, title, company, salary, location, experience, published, url, tags }) {
+function workMode(value) {
+  const signal = text(value).toLowerCase();
+  if (/remote|удален/.test(signal)) return "remote";
+  if (/hybrid|гибрид/.test(signal)) return "hybrid";
+  if (/onsite|on-site|on site|office|офис/.test(signal)) return "onsite";
+  return undefined;
+}
+
+function employmentType(value) {
+  const signal = text(value).toLowerCase();
+  if (/fulltime|full-time|full time|полный/.test(signal)) return "fullTime";
+  if (/parttime|part-time|part time|непол/.test(signal)) return "partTime";
+  if (/contract|контракт/.test(signal)) return "contract";
+  if (/intern|стаж/.test(signal)) return "internship";
+  return undefined;
+}
+
+function job({ provider, id, title, company, salary, location, experience, published, url, tags, description, workplace, employment }) {
   const directUrl = safeUrl(url);
   if (!id || !title || !directUrl) return null;
   return {
@@ -26,6 +43,9 @@ function job({ provider, id, title, company, salary, location, experience, publi
     source: provider,
     url: directUrl,
     tags: (tags || []).map(text).filter(Boolean).slice(0, 5),
+    ...(text(description) ? { description: text(description) } : {}),
+    ...(workMode(workplace) ? { workMode: workMode(workplace) } : {}),
+    ...(employmentType(employment) ? { employmentType: employmentType(employment) } : {}),
   };
 }
 
@@ -55,7 +75,10 @@ export function normalizeLever(payload, employer) {
     provider: "lever", id: item.id, title: item.text, company: employer.company,
     location: item.categories?.location, experience: item.categories?.commitment,
     published: item.createdAt, url: item.hostedUrl || item.applyUrl,
-    tags: [item.categories?.team, item.categories?.department, item.categories?.commitment],
+    tags: [item.categories?.team, item.categories?.department, item.categories?.commitment, item.categories?.workplaceType],
+    description: item.descriptionPlain || item.content?.descriptionHtml,
+    workplace: item.categories?.workplaceType || item.workplaceType,
+    employment: item.categories?.commitment,
   })).filter(Boolean);
 }
 
@@ -65,6 +88,9 @@ export function normalizeAshby(payload, employer) {
     company: employer.company, salary: item.compensation?.scrapeableCompensationSalarySummary || item.compensation?.compensationTierSummary,
     location: item.location, experience: item.employmentType, published: item.publishedAt,
     url: item.jobUrl || item.applyUrl, tags: [item.department, item.team, item.workplaceType, item.employmentType],
+    description: item.descriptionPlain || item.descriptionHtml,
+    workplace: item.workplaceType || (item.isRemote ? "Remote" : ""),
+    employment: item.employmentType,
   })).filter(Boolean);
 }
 
@@ -78,6 +104,9 @@ export function normalizeSmartRecruiters(payload, employer) {
       company: item.company?.name || employer.company, location: item.location?.remote ? `${location || "Remote"} · Remote` : location,
       experience: item.experienceLevel?.label, published: item.releasedDate, url: direct,
       tags: [item.department?.label, item.function?.label, item.typeOfEmployment?.label],
+      description: [item.jobAd?.sections?.jobDescription?.text, item.jobAd?.jobDescription].filter(Boolean).join("\n\n"),
+      workplace: item.location?.remote ? "Remote" : "",
+      employment: item.typeOfEmployment?.label,
     });
   }).filter(Boolean);
 }
@@ -89,9 +118,10 @@ export function normalizeRecruitee(payload, employer) {
     const location = text(item.location || item.city || locations.map((v) => v?.city || v?.name).filter(Boolean).join(", "));
     return job({
       provider: "recruitee", id: item.id || item.slug, title: item.title, company: employer.company,
-      salary: item.salary, location, experience: item.employment_type || item.employmentType,
-      published: item.published_at || item.created_at, url: item.careers_url || item.url,
-      tags: [item.department, item.department?.name, item.remote ? "Remote" : ""],
+      salary: item.salary, location, experience: item.experience_level || item.experienceLevel,
+      published: item.published_at || item.created_at, url: item.careers_url || item.careers_apply_url || item.url,
+      tags: [item.department, item.department?.name, item.employment_type, item.remote ? "Remote" : ""],
+      description: item.description,
     });
   }).filter(Boolean);
 }
@@ -104,6 +134,9 @@ export function normalizeWorkable(payload, employer) {
       company: employer.company, location, experience: item.experience, published: item.published_on || item.created_at,
       url: item.shortlink || item.application_url || item.url,
       tags: [item.department, item.employment_type, item.workplace_type, item.industry],
+      description: item.description,
+      workplace: item.workplace_type || (item.telecommuting ? "Remote" : ""),
+      employment: item.employment_type,
     });
   }).filter(Boolean);
 }

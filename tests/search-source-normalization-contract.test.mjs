@@ -27,14 +27,73 @@ function assertSafeJob(job) {
 
 test("public feed normalizers reject malformed records and keep safe URLs", () => {
   assert.deepEqual(normalizeRemoteOkPayload([{ id: "1", position: "QA", url: "javascript:alert(1)" }]), []);
-  const remote = normalizeRemoteOkPayload([{ id: "1", position: "QA Engineer", url: "https://remoteok.com/1", company: "Acme" }]);
+  const remote = normalizeRemoteOkPayload([{ id: "1", position: "QA Engineer", url: "https://remoteok.com/1", company: "Acme", location: "Worldwide", description: "<p>  Test web applications.  </p>", tags: ["testing"] }]);
   assertSafeJob(remote[0]);
+  assert.equal(remote[0].workMode, "remote");
+  assert.equal(remote[0].description, "Test web applications.");
 
-  const wwr = normalizeWwrRss("<rss><channel><item><title>Acme: QA Engineer</title><link>https://weworkremotely.com/jobs/1</link><pubDate>Sun, 27 Sep 2026 10:00:00 GMT</pubDate></item></channel></rss>");
+  const wwr = normalizeWwrRss("<rss><channel><item><title>Acme: QA Engineer</title><link>https://weworkremotely.com/jobs/1</link><pubDate>Sun, 27 Sep 2026 10:00:00 GMT</pubDate><region>Anywhere in the World</region><category>Programming</category><type>Full-Time</type><description><![CDATA[  <p>  Test web applications.  </p>  ]]></description></item></channel></rss>");
   assertSafeJob(wwr[0]);
+  assert.equal(wwr[0].workMode, "remote");
+  assert.equal(wwr[0].employmentType, "fullTime");
+  assert.equal(wwr[0].location, "Anywhere in the World");
+  assert.equal(wwr[0].description, "Test web applications.");
 
   assert.equal(normalizeRemotivePayload({ jobs: [{ id: "1", title: "QA", url: "not-a-url" }] }).length, 0);
   assert.equal(normalizeJobicyPayload({ jobs: [{ id: "1", jobTitle: "QA", url: "/job/1" }] }).length, 0);
+});
+
+test("Remotive normalization preserves documented remote and employment semantics", () => {
+  const [job] = normalizeRemotivePayload({
+    jobs: [{
+      id: "rem-1",
+      title: "QA Engineer",
+      company_name: "Acme",
+      candidate_required_location: "Worldwide",
+      publication_date: "2026-09-29T10:00:00Z",
+      url: "https://remotive.com/remote-jobs/software-development/qa-engineer-1",
+      category: "Software Development",
+      job_type: "Full-time",
+      salary: "$70,000 - $90,000",
+      description: "<p>Test web applications.</p>",
+    }],
+  });
+  assertSafeJob(job);
+  assert.equal(job.workMode, "remote");
+  assert.equal(job.employmentType, "fullTime");
+  assert.equal(job.location, "Worldwide");
+  assert.equal(job.description, "Test web applications.");
+});
+
+test("Jobicy normalization preserves documented salary, level, remote and employment fields", () => {
+  const [job] = normalizeJobicyPayload({
+    jobs: [{
+      id: 123,
+      url: "https://jobicy.com/jobs/example-role",
+      jobTitle: "Senior QA Engineer",
+      companyName: "Acme",
+      jobType: ["full-time"],
+      jobGeo: "Anywhere",
+      jobLevel: "Senior",
+      jobDescription: "<p>Own automated testing.</p>",
+      jobIndustry: ["Engineering"],
+      pubDate: "2026-09-29T10:00:00Z",
+      salaryMin: 90000,
+      salaryMax: 125000,
+      salaryCurrency: "USD",
+      salaryPeriod: "yearly",
+    }],
+  });
+  assertSafeJob(job);
+  assert.equal(job.workMode, "remote");
+  assert.equal(job.employmentType, "fullTime");
+  assert.equal(job.experience, "Senior");
+  assert.equal(job.location, "Anywhere");
+  assert.equal(job.description, "Own automated testing.");
+  assert.match(job.salary, /90000/);
+  assert.match(job.salary, /125000/);
+  assert.match(job.salary, /USD/);
+  assert.match(job.salary, /yearly/);
 });
 
 test("Arbeitnow normalization preserves remote flag and salary data", () => {
@@ -57,11 +116,57 @@ test("Arbeitnow normalization preserves remote flag and salary data", () => {
 test("ATS normalizers accept provider payloads only when a direct URL can be built", () => {
   const employer = { provider: "greenhouse", slug: "acme", company: "Acme" };
   assertSafeJob(normalizeGreenhouse({ jobs: [{ id: 1, title: "QA", absolute_url: "https://boards.greenhouse.io/acme/jobs/1", updated_at: "2026-09-27" }] }, employer)[0]);
-  assertSafeJob(normalizeLever([{ id: "1", text: "QA", hostedUrl: "https://jobs.lever.co/acme/1", categories: {} }], { ...employer, provider: "lever" })[0]);
-  assertSafeJob(normalizeAshby({ jobs: [{ jobUrl: "https://jobs.ashbyhq.com/acme/1", title: "QA", isListed: true }] }, { ...employer, provider: "ashby" })[0]);
-  assertSafeJob(normalizeSmartRecruiters({ content: [{ id: "1", name: "QA", company: { identifier: "acme", name: "Acme" } }] }, { ...employer, provider: "smartrecruiters" })[0]);
-  assertSafeJob(normalizeRecruitee({ offers: [{ id: 1, title: "QA", careers_url: "https://acme.recruitee.com/o/qa" }] }, { ...employer, provider: "recruitee" })[0]);
-  assertSafeJob(normalizeWorkable({ jobs: [{ shortcode: "1", title: "QA", url: "https://apply.workable.com/acme/j/1/" }] }, { ...employer, provider: "workable" })[0]);
+  const lever = normalizeLever([{ id: "1", text: "QA", hostedUrl: "https://jobs.lever.co/acme/1", categories: { commitment: "Full-time" }, workplaceType: "remote", descriptionPlain: "Test web applications." }], { ...employer, provider: "lever" })[0];
+  assertSafeJob(lever);
+  assert.equal(lever.workMode, "remote");
+  assert.equal(lever.employmentType, "fullTime");
+  assert.equal(lever.description, "Test web applications.");
+  const ashby = normalizeAshby({ jobs: [{ jobUrl: "https://jobs.ashbyhq.com/acme/1", title: "QA", isListed: true, isRemote: true, workplaceType: "Remote", employmentType: "FullTime", descriptionPlain: "Test web applications.", publishedAt: "2026-09-29T10:00:00Z" }] }, { ...employer, provider: "ashby" })[0];
+  assertSafeJob(ashby);
+  assert.equal(ashby.workMode, "remote");
+  assert.equal(ashby.employmentType, "fullTime");
+  assert.equal(ashby.description, "Test web applications.");
+  const smart = normalizeSmartRecruiters({ content: [{ id: "1", name: "QA", releasedDate: "2026-09-29T10:00:00Z", company: { identifier: "acme", name: "Acme" }, location: { city: "Remote", remote: true }, typeOfEmployment: { label: "Full-time" }, jobAd: { jobDescription: "<p>Test web applications.</p>" } }] }, { ...employer, provider: "smartrecruiters" })[0];
+  assertSafeJob(smart);
+  assert.equal(smart.workMode, "remote");
+  assert.equal(smart.employmentType, "fullTime");
+  assert.equal(smart.description, "Test web applications.");
+  const recruitee = normalizeRecruitee({
+    offers: [{
+      id: 1,
+      title: "QA",
+      careers_url: "https://acme.recruitee.com/o/qa",
+      description: "<p>Test web applications.</p>",
+      department: { name: "Engineering" },
+      employment_type: "Full-time",
+    }],
+  }, { ...employer, provider: "recruitee" })[0];
+  assertSafeJob(recruitee);
+  assert.equal(recruitee.description, "Test web applications.");
+  assert.ok(recruitee.tags.includes("Full-time"));
+  assert.ok(recruitee.tags.includes("Engineering"));
+  const workable = normalizeWorkable({
+    jobs: [{
+      shortcode: "1",
+      title: "QA",
+      country: "United States",
+      state: "Illinois",
+      city: "Chicago",
+      department: "Engineering",
+      workplace_type: "hybrid",
+      employment_type: "Full-time",
+      experience: "Mid-level",
+      published_on: "2026-09-29T10:00:00Z",
+      shortlink: "https://apply.workable.com/acme/j/1/",
+      description: "Test web applications.",
+    }],
+  }, { ...employer, provider: "workable" })[0];
+  assertSafeJob(workable);
+  assert.equal(workable.location, "Chicago, Illinois, United States");
+  assert.equal(workable.workMode, "hybrid");
+  assert.equal(workable.employmentType, "fullTime");
+  assert.equal(workable.experience, "Mid-level");
+  assert.equal(workable.description, "Test web applications.");
 });
 
 test("Trudvsem and Remocate reject unusable vacancies", () => {
