@@ -9,6 +9,9 @@ const shared = path.join(root, "api/_shared.mjs");
 
 test("all snapshot sources reject a query before loading upstream data", () => {
   const source = fs.readFileSync(shared, "utf8");
-  assert.match(source, /if \(!SNAPSHOT_SOURCE_SET\.has\(source\)\) return sendJson\(response, 404, \{ error: "unsupported_source" \} \);\s*if \(rejectSnapshotQuery\(url, response\)\) return;/);
+  const unsupportedIndex = source.indexOf('if (!SNAPSHOT_SOURCE_SET.has(source)) return sendJson(response, 404, { error: "unsupported_source" });');
+  const rejectIndex = source.indexOf('if (rejectSnapshotQuery(url, response)) return;');
+  assert.ok(unsupportedIndex >= 0);
+  assert.ok(rejectIndex > unsupportedIndex);
   assert.doesNotMatch(source, /if \(source === "arbeitnow"\) \{[\s\S]*?filterPublicFeedResults\(body\.results, query\)/);
 });
