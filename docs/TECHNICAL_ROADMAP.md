@@ -214,7 +214,7 @@ Search and matching are separate product modes. Ordinary Search must not silentl
 1. Verify every active upstream with real responses.
 2. Capture representative real payload fixtures and test each normalizer.
 3. [x] Test malformed/incomplete upstream payloads and missing id/title/company/url; all BFF/HH client envelopes now reject malformed top-level payloads instead of silently converting missing result arrays into an empty successful search.
-4. [x] Harden HH pagination envelope validation: non-empty page counts must keep the current page inside the reported page range; the empty `pages=0,page=0` response remains valid.
+3a. [x] Harden HH pagination envelope validation: non-empty page counts must keep the current page inside the reported page range; the empty `pages=0,page=0` response remains valid.
 4. Verify real vacancy URLs and source-specific viewer behavior.
 5. Verify salary amount/range/currency/period semantics.
 6. Verify remote/hybrid/office and employment semantics from structured source fields before heuristic fallback.
