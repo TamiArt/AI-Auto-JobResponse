@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { filterPublicFeedResults, normalizeArbeitnowPayload } from "../server/publicFeeds.mjs";
 
-test("Arbeitnow payload normalizes to JOBOS search contract", () => {
+test("Arbeitnow source-owned payload normalizes to JOBOS search contract", () => {
   const jobs = normalizeArbeitnowPayload({
     data: [{
       slug: "qa-engineer-1",
