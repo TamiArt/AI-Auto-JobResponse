@@ -20,6 +20,8 @@ test("requireHhPayload rejects malformed pagination envelopes", () => {
   assert.throws(() => requireHhPayload({ items: [], pages: 1 }), /malformed_source_payload/);
   assert.throws(() => requireHhPayload({ items: {}, page: 0, pages: 1 }), /malformed_source_payload/);
   assert.throws(() => requireHhPayload({ items: [], page: -1, pages: 1 }), /malformed_source_payload/);
+  assert.throws(() => requireHhPayload({ items: [], page: 2, pages: 2 }), /malformed_source_payload/);
+  assert.throws(() => requireHhPayload({ items: [], page: 0, pages: -1 }), /malformed_source_payload/);
 });
 
 test("all BFF adapters use the malformed-envelope guard", async () => {
