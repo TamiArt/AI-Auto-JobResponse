@@ -100,6 +100,46 @@ test("mergeSearchResults uses the newest cross-source vacancy when duplicate ord
   );
 });
 
+test("mergeSearchResults normalizes case and punctuation for cross-source fingerprints", () => {
+  const first = result({
+    id: "first",
+    source: "hh",
+    title: "Senior QA — Engineer",
+    company: "Example, Inc.",
+    location: "Москва",
+    url: "https://hh.example/vacancy/1",
+    publishedTimestamp: 20,
+  });
+  const second = result({
+    id: "second",
+    source: "greenhouse",
+    title: "senior qa engineer",
+    company: "Example Inc",
+    location: "МОСКВА",
+    url: "https://boards.example/jobs/2",
+    publishedTimestamp: 10,
+  });
+
+  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first"]);
+});
+
+test("mergeSearchResults keeps same fingerprint when both results come from the same source", () => {
+  const first = result({
+    id: "first",
+    source: "hh",
+    url: "https://hh.example/vacancy/1",
+    publishedTimestamp: 20,
+  });
+  const second = result({
+    id: "second",
+    source: "hh",
+    url: "https://hh.example/vacancy/2",
+    publishedTimestamp: 10,
+  });
+
+  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first", "second"]);
+});
+
 test("mergeSearchResults does not fingerprint vacancies with an unknown location across sources", () => {
   const first = result({
     id: "first",
