@@ -146,6 +146,9 @@ export function normalizeWwrRss(xml) {
       publishedTimestamp: timestamp(xmlTag(item, "pubDate")),
       url,
       tags: [xmlTag(item, "category"), xmlTag(item, "type")].map(text).filter(Boolean).slice(0, 5),
+      description: plainText(xmlTag(item, "description")),
+      workMode: "remote",
+      employmentType: inferEmploymentType(xmlTag(item, "type")),
     };
   }).filter(Boolean);
 }

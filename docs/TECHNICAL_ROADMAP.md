@@ -117,6 +117,7 @@ Telegram является отдельным источником ваканси
 - [x] Jobicy public Jobs API semantics verified against current documentation: id/url/jobTitle/companyName/jobIndustry/jobType/jobGeo/jobLevel/jobDescription/pubDate/salaryMin/salaryMax/salaryCurrency/salaryPeriod are documented; public requests do not require an API key and return Jobicy listing URLs.
 - [x] Jobicy normalizer preserves remote semantics, job level, description, explicit employment type and salary metadata instead of discarding source fields.
 - [x] Jobicy salary normalizer preserves numeric bounds, ISO currency and `salaryPeriod` metadata from the public Jobs API.
+- [x] We Work Remotely public RSS semantics verified against the current source page: a public all-jobs RSS feed is available and requires attribution/link-back; the normalizer preserves RSS region/category/type/description when present and keeps WWR listings remote.
 
 - [x] HH salary upstream narrowing removed: JOBOS uses HH `label=with_salary` only when salary filtering is active and applies the authoritative exact range/currency filter after normalization.
 

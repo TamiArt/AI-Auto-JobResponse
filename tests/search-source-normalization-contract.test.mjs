@@ -30,8 +30,12 @@ test("public feed normalizers reject malformed records and keep safe URLs", () =
   const remote = normalizeRemoteOkPayload([{ id: "1", position: "QA Engineer", url: "https://remoteok.com/1", company: "Acme" }]);
   assertSafeJob(remote[0]);
 
-  const wwr = normalizeWwrRss("<rss><channel><item><title>Acme: QA Engineer</title><link>https://weworkremotely.com/jobs/1</link><pubDate>Sun, 27 Sep 2026 10:00:00 GMT</pubDate></item></channel></rss>");
+  const wwr = normalizeWwrRss("<rss><channel><item><title>Acme: QA Engineer</title><link>https://weworkremotely.com/jobs/1</link><pubDate>Sun, 27 Sep 2026 10:00:00 GMT</pubDate><region>Anywhere in the World</region><category>Programming</category><type>Full-Time</type><description><![CDATA[  <p>  Test web applications.  </p>  ]]></description></item></channel></rss>");
   assertSafeJob(wwr[0]);
+  assert.equal(wwr[0].workMode, "remote");
+  assert.equal(wwr[0].employmentType, "fullTime");
+  assert.equal(wwr[0].location, "Anywhere in the World");
+  assert.equal(wwr[0].description, "Test web applications.");
 
   assert.equal(normalizeRemotivePayload({ jobs: [{ id: "1", title: "QA", url: "not-a-url" }] }).length, 0);
   assert.equal(normalizeJobicyPayload({ jobs: [{ id: "1", jobTitle: "QA", url: "/job/1" }] }).length, 0);
