@@ -25,6 +25,8 @@ test("isSearchResult accepts the normalized adapter contract", () => {
 
 test("isSearchResult rejects malformed or unsafe results", () => {
   assert.equal(isSearchResult(result({ id: "" })), false);
+  assert.equal(isSearchResult(result({ company: "" })), false);
+  assert.equal(isSearchResult(result({ url: "https://" })), false);
   assert.equal(isSearchResult(result({ publishedTimestamp: Number.NaN })), false);
   assert.equal(isSearchResult(result({ url: "javascript:alert(1)" })), false);
   assert.equal(isSearchResult(result({ tags: ["ok", 2] })), false);
@@ -38,4 +40,86 @@ test("mergeSearchResults removes duplicates and sorts newest first", () => {
 
   const merged = mergeSearchResults([old, recent], [duplicate, malformed]);
   assert.deepEqual(merged.map((item) => item.id), ["recent", "old"]);
+});
+
+test("mergeSearchResults deduplicates equivalent URL spellings", () => {
+  const first = result({ id: "first", url: "https://example.test/vacancy/42#apply", publishedTimestamp: 20 });
+  const second = result({ id: "second", title: "QA Engineer Updated", url: "https://EXAMPLE.test:443/vacancy/42/", publishedTimestamp: 10 });
+  const merged = mergeSearchResults([first, second]);
+  assert.deepEqual(merged.map((item) => item.id), ["first"]);
+});
+
+test("mergeSearchResults ignores common tracking parameters when deduplicating URLs", () => {
+  const first = result({ id: "first", url: "https://example.test/vacancy/42?utm_source=telegram", publishedTimestamp: 20 });
+  const second = result({ id: "second", url: "https://example.test/vacancy/42?utm_source=hh", publishedTimestamp: 10 });
+  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first"]);
+});
+
+test("mergeSearchResults keeps distinct vacancy URLs from the same source", () => {
+  const first = result({ id: "first", url: "https://example.test/vacancy/1" });
+  const second = result({ id: "second", url: "https://example.test/vacancy/2" });
+  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first", "second"]);
+});
+
+test("mergeSearchResults removes the same vacancy fingerprint when it comes from another source", () => {
+  const hh = result({ id: "hh-1", source: "hh", url: "https://hh.example/vacancy/1", publishedTimestamp: 20 });
+  const ats = result({ id: "ats-1", source: "greenhouse", url: "https://boards.example/jobs/1", publishedTimestamp: 10 });
+  assert.deepEqual(mergeSearchResults([hh, ats]).map((item) => item.id), ["hh-1"]);
+});
+
+test("mergeSearchResults keeps two distinct vacancies with the same title and company when their locations differ", () => {
+  const first = result({ id: "first", source: "hh", location: "Москва", url: "https://example.test/vacancy/1" });
+  const second = result({ id: "second", source: "greenhouse", location: "Санкт-Петербург", url: "https://example.test/vacancy/2" });
+  assert.deepEqual(mergeSearchResults([first, second]).map((item) => item.id), ["first", "second"]);
+});
+
+
+test("mergeSearchResults uses the newest cross-source vacancy when duplicate order differs", () => {
+  const olderAts = result({
+    id: "ats-old",
+    source: "greenhouse",
+    title: "Python Developer",
+    company: "Example",
+    location: "Remote",
+    publishedTimestamp: 10,
+    url: "https://boards.example/jobs/old",
+  });
+  const newerHh = result({
+    id: "hh-new",
+    source: "hh",
+    title: "Python Developer",
+    company: "Example",
+    location: "Remote",
+    publishedTimestamp: 20,
+    url: "https://hh.example/vacancy/new",
+  });
+
+  assert.deepEqual(
+    mergeSearchResults([olderAts], [newerHh]).map((item) => item.id),
+    ["hh-new"],
+  );
+});
+
+test("mergeSearchResults does not fingerprint vacancies with an unknown location across sources", () => {
+  const first = result({
+    id: "first",
+    source: "hh",
+    title: "Python Developer",
+    company: "Example",
+    location: "Локация не указана",
+    url: "https://hh.example/vacancy/1",
+  });
+  const second = result({
+    id: "second",
+    source: "greenhouse",
+    title: "Python Developer",
+    company: "Example",
+    location: "Локация не указана",
+    url: "https://boards.example/jobs/2",
+  });
+
+  assert.deepEqual(
+    mergeSearchResults([first, second]).map((item) => item.id),
+    ["first", "second"],
+  );
 });

@@ -1,6 +1,7 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { AiTask, CareerProfile } from "../../domain/types";
 import { buildAiPackage, buildPrompt } from "../../lib/aiPackage";
+import { loadAiWorkspaceItems, saveAiWorkspaceItem } from "./aiWorkspaceStorage.js";
 
 interface Props { profile: CareerProfile }
 
@@ -44,9 +45,13 @@ export function AiPanel({ profile }: Props) {
   const [provider, setProvider] = useState<ExternalProvider>("gemini");
   const [importText, setImportText] = useState("");
   const [importKind, setImportKind] = useState<ImportedKind>("other");
-  const [savedItems, setSavedItems] = useState<Array<{ id: string; kind: ImportedKind; text: string; createdAt: string }>>([]);
+  const [savedItems, setSavedItems] = useState(loadAiWorkspaceItems);
 
   const prompt = useMemo(() => buildPrompt(buildAiPackage(task, profile, { title, company, description, url })), [task, profile, title, company, description, url]);
+
+  useEffect(() => {
+    setSavedItems(loadAiWorkspaceItems());
+  }, []);
 
   const openExternalAi = async () => {
     try { await navigator.clipboard.writeText(prompt); } catch { /* clipboard can be unavailable */ }
@@ -70,7 +75,9 @@ export function AiPanel({ profile }: Props) {
   const saveImported = () => {
     const text = importText.trim();
     if (!text) return;
-    setSavedItems((items) => [...items, { id: crypto.randomUUID(), kind: importKind, text, createdAt: new Date().toISOString() }]);
+    const item = { id: crypto.randomUUID(), kind: importKind, text, createdAt: new Date().toISOString() };
+    saveAiWorkspaceItem(item);
+    setSavedItems(loadAiWorkspaceItems());
     setImportText("");
   };
 

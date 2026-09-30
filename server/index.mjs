@@ -16,23 +16,26 @@ import {
 } from "./publicFeeds.mjs";
 import { buildAtsUrl, filterAtsResults, normalizeAtsPayload } from "./atsFeeds.mjs";
 import { ATS_CACHE_MS, ATS_CONCURRENCY, ATS_EMPLOYERS } from "./atsRegistry.mjs";
+import { UPSTREAM_TIMEOUT_MS } from "./runtimeConfig.mjs";
 import { createRuntimeStatus, withSecurityHeaders } from "./httpPolicy.mjs";
 import { filterTelegramResults, normalizeTelegramHtml, validateTelegramRequest } from "./telegramPublic.mjs";
+import { normalizeRemocateHtml } from "./remocate.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const DIST_DIR = join(ROOT, "dist");
 const PORT = Number(process.env.PORT || 4173);
 const HOST = process.env.HOST || "0.0.0.0";
-const UPSTREAM_TIMEOUT_MS = 30_000;
 const STANDARD_FEED_CACHE_MS = 10 * 60 * 1000;
 const JOBICY_CACHE_MS = 60 * 60 * 1000;
 const REMOTIVE_CACHE_MS = 6 * 60 * 60 * 1000;
+const REMOCATE_CACHE_MS = 15 * 60 * 1000;
 const TRUDVSEM_API = "https://opendata.trudvsem.ru/api/v1/vacancies";
 const REMOTE_OK_API = "https://remoteok.com/api";
 const WWR_RSS = "https://weworkremotely.com/remote-jobs.rss";
 const REMOTIVE_API = "https://remotive.com/api/remote-jobs";
 const JOBICY_API = "https://jobicy.com/api/v2/remote-jobs?count=100";
 const ARBEITNOW_API = "https://www.arbeitnow.com/api/job-board-api";
+const REMOCATE_URL = "https://www.remocate.app/";
 const TELEGRAM_TIMEOUT_MS = 15_000;
 const feedCache = new Map();
 const atsCache = new Map();
@@ -146,12 +149,7 @@ async function fetchNormalizedFeed({ key, cacheMs, query, loader }) {
 }
 
 async function fetchRemoteOk(query) {
-  return fetchNormalizedFeed({
-    key: "remoteok", cacheMs: STANDARD_FEED_CACHE_MS, query,
-    loader: async () => normalizeRemoteOkPayload(await fetchWithTimeout(REMOTE_OK_API, {
-      headers: { "User-Agent": "HuntPulse/0.1 (github.com/TamiArt/AI-Auto-JobResponse)" },
-    })),
-  });
+  return fetchNormalizedFeed({ key: "remoteok", cacheMs: STANDARD_FEED_CACHE_MS, query, loader: async () => normalizeRemoteOkPayload(await fetchWithTimeout(REMOTE_OK_API, { headers: { "User-Agent": "HuntPulse/0.1 (github.com/TamiArt/AI-Auto-JobResponse)" } })) });
 }
 
 async function fetchWwr(query) {
@@ -162,19 +160,37 @@ async function fetchRemotive(query) {
   return fetchNormalizedFeed({ key: "remotive", cacheMs: REMOTIVE_CACHE_MS, query, loader: async () => normalizeRemotivePayload(await fetchWithTimeout(REMOTIVE_API)) });
 }
 
+async function fetchRemocate(query) {
+  const normalizedQuery = String(query || "").trim();
+  if (!normalizedQuery) return { results: [], meta: { lastUpdated: Date.now(), nextRefresh: Date.now() + REMOCATE_CACHE_MS, refreshIntervalMs: REMOCATE_CACHE_MS, cached: false, stale: false } };
+  const cacheKey = `remocate:${normalizedQuery.toLocaleLowerCase()}`;
+  const cached = await fetchCachedWithMeta(cacheKey, REMOCATE_CACHE_MS, async () => {
+    const html = await fetchWithTimeout(`${REMOCATE_URL}?q=${encodeURIComponent(normalizedQuery)}`, {
+      parse: "text",
+      headers: { Accept: "text/html, application/xhtml+xml", "User-Agent": "JOBOS-AI/1.0 (+https://github.com/TamiArt/AI-Auto-JobResponse)" },
+    });
+    return normalizeRemocateHtml(html, normalizedQuery);
+  });
+  return {
+    results: cached.value,
+    meta: {
+      lastUpdated: cached.lastUpdated,
+      nextRefresh: cached.nextRefresh,
+      refreshIntervalMs: cached.refreshIntervalMs,
+      cached: cached.cached,
+      stale: cached.stale,
+    },
+  };
+}
+
 async function fetchTelegramChannel(channel) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), TELEGRAM_TIMEOUT_MS);
   try {
-    const response = await fetch(`https://t.me/s/${encodeURIComponent(channel)}`, {
-      signal: controller.signal,
-      headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0 (compatible; JOBOS/1.0)" },
-    });
+    const response = await fetch(`https://t.me/s/${encodeURIComponent(channel)}`, { signal: controller.signal, headers: { Accept: "text/html", "User-Agent": "Mozilla/5.0 (compatible with JOBOS/1.0)" } });
     if (!response.ok) throw new Error(`Telegram HTTP ${response.status}`);
     return normalizeTelegramHtml(await response.text(), channel);
-  } finally {
-    clearTimeout(timeout);
-  }
+  } finally { clearTimeout(timeout); }
 }
 
 async function fetchTelegram(url) {
@@ -183,19 +199,11 @@ async function fetchTelegram(url) {
   const query = url.searchParams.get("q") || "";
   const settled = await Promise.allSettled(validation.channels.map(fetchTelegramChannel));
   const results = settled.flatMap((entry) => entry.status === "fulfilled" ? entry.value : []);
-  return {
-    results: filterTelegramResults(results, query),
-    meta: { channels: validation.channels, lastUpdated: Date.now() },
-  };
+  return { results: filterTelegramResults(results, query), meta: { channels: validation.channels, lastUpdated: Date.now() } };
 }
 
 async function fetchArbeitnow(query) {
-  return fetchNormalizedFeed({
-    key: "arbeitnow", cacheMs: STANDARD_FEED_CACHE_MS, query,
-    loader: async () => normalizeArbeitnowPayload(await fetchWithTimeout(ARBEITNOW_API, {
-      headers: { "User-Agent": "JOBOS-AI/1.0" },
-    })),
-  });
+  return fetchNormalizedFeed({ key: "arbeitnow", cacheMs: STANDARD_FEED_CACHE_MS, query, loader: async () => normalizeArbeitnowPayload(await fetchWithTimeout(ARBEITNOW_API, { headers: { "User-Agent": "JOBOS-AI/1.0" } })) });
 }
 
 async function fetchJobicy(query) {
@@ -236,25 +244,16 @@ async function fetchAts(query) {
 async function handlePublicFeed(response, url, loader) {
   const validation = validatePublicFeedQuery(url.searchParams.get("q"));
   if (!validation.ok) return sendJson(response, validation.status, { error: validation.error });
-  try {
-    sendJson(response, 200, await loader(validation.query));
-  } catch (error) {
-    const timedOut = error instanceof DOMException && error.name === "AbortError";
-    sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
-  }
+  try { sendJson(response, 200, await loader(validation.query)); }
+  catch (error) { const timedOut = error instanceof DOMException && error.name === "AbortError"; sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" }); }
 }
 
 async function handleSnapshotFeed(response, url, loader) {
   const query = url.searchParams.get("q") || "";
   if (query.length > 160) return sendJson(response, 400, { error: "invalid_parameters" });
-  try {
-    sendJson(response, 200, await loader(query));
-  } catch (error) {
-    const timedOut = error instanceof DOMException && error.name === "AbortError";
-    sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
-  }
+  try { sendJson(response, 200, await loader(query)); }
+  catch (error) { const timedOut = error instanceof DOMException && error.name === "AbortError"; sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" }); }
 }
-
 
 async function handleTrudvsemView(response, url) {
   const validation = validateTrudvsemViewRequest(url.searchParams.get("company"), url.searchParams.get("id"));
@@ -264,25 +263,18 @@ async function handleTrudvsemView(response, url) {
     const sourceUrl = `https://trudvsem.ru/vacancy/card/${encodeURIComponent(validation.company)}/${encodeURIComponent(validation.id)}`;
     const html = renderTrudvsemVacancyPage(payload, sourceUrl);
     return html ? sendHtml(response, 200, html) : sendHtml(response, 404, "Вакансия не найдена");
-  } catch {
-    return sendHtml(response, 502, "Не удалось загрузить вакансию");
-  }
+  } catch { return sendHtml(response, 502, "Не удалось загрузить вакансию"); }
 }
 
 async function handleApi(request, response, url) {
   if (request.method !== "GET") return sendJson(response, 405, { error: "method_not_allowed" });
-  if (url.pathname === "/api/health") return sendJson(response, 200, { ok: true, sources: ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats", "telegram"] });
+  if (url.pathname === "/api/health") return sendJson(response, 200, { ok: true, sources: ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "ats", "telegram"] });
   if (url.pathname === "/api/status") return sendJson(response, 200, createRuntimeStatus({ feedCache, atsCache, upstreamTimeoutMs: UPSTREAM_TIMEOUT_MS, atsConcurrency: ATS_CONCURRENCY }));
   if (url.pathname === "/api/jobs/trudvsem-view") return handleTrudvsemView(response, url);
   const source = url.pathname === "/api/jobs" ? url.searchParams.get("source") : null;
   if (url.pathname === "/api/jobs/hh" || source === "hh") {
-    try {
-      const result = await fetchHh(url);
-      return sendJson(response, result.status, result.body);
-    } catch (error) {
-      const timedOut = error instanceof DOMException && error.name === "AbortError";
-      return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
-    }
+    try { const result = await fetchHh(url); return sendJson(response, result.status, result.body); }
+    catch (error) { const timedOut = error instanceof DOMException && error.name === "AbortError"; return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" }); }
   }
   if (url.pathname === "/api/jobs/remoteok") return handlePublicFeed(response, url, fetchRemoteOk);
   if (source === "remoteok") return handleSnapshotFeed(response, url, fetchRemoteOk);
@@ -294,51 +286,54 @@ async function handleApi(request, response, url) {
   if (source === "jobicy") return handleSnapshotFeed(response, url, fetchJobicy);
   if (url.pathname === "/api/jobs/ats") return handlePublicFeed(response, url, fetchAts);
   if (source === "ats") return handleSnapshotFeed(response, url, fetchAts);
+  if (url.pathname === "/api/jobs/arbeitnow") return handlePublicFeed(response, url, fetchArbeitnow);
   if (source === "arbeitnow") return handleSnapshotFeed(response, url, fetchArbeitnow);
-  if (source === "telegram") return handleSnapshotFeed(response, url, fetchTelegram);
-  if (url.pathname !== "/api/jobs/trudvsem") return sendJson(response, 404, { error: "not_found" });
-
-  const validation = validateTrudvsemRequest(url.searchParams.get("q"), url.searchParams.get("offset"));
-  if (!validation.ok) return sendJson(response, validation.status, { error: validation.error });
-  try {
-    sendJson(response, 200, await fetchTrudvsem(validation.query, validation.offset));
-  } catch (error) {
-    const timedOut = error instanceof DOMException && error.name === "AbortError";
-    sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
+  if (url.pathname === "/api/jobs/remocate" || source === "remocate") return handlePublicFeed(response, url, fetchRemocate);
+  if (url.pathname === "/api/jobs/trudvsem") {
+    const validation = validateTrudvsemRequest(url.searchParams);
+    if (!validation.ok) return sendJson(response, validation.status, { error: validation.error });
+    try { return sendJson(response, 200, await fetchTrudvsem(validation.query, validation.offset)); }
+    catch (error) { const timedOut = error instanceof DOMException && error.name === "AbortError"; return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" }); }
   }
+  if (url.pathname === "/api/jobs/telegram" || source === "telegram") {
+    try { return sendJson(response, 200, await fetchTelegram(url)); }
+    catch { return sendJson(response, 502, { error: "upstream_unavailable" }); }
+  }
+  return sendJson(response, 404, { error: "not_found" });
+}
+
+function safeStaticPath(pathname) {
+  const relative = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
+  const candidate = normalize(join(DIST_DIR, relative));
+  return candidate.startsWith(DIST_DIR) ? candidate : null;
 }
 
 async function serveStatic(response, pathname) {
-  const requested = pathname === "/" ? "index.html" : pathname.replace(/^\/+/, "");
-  const safePath = normalize(requested).replace(/^(\.\.(\/|\\|$))+/, "");
-  let filePath = resolve(DIST_DIR, safePath);
-  if (!filePath.startsWith(`${DIST_DIR}/`) && filePath !== DIST_DIR) filePath = join(DIST_DIR, "index.html");
-  try {
-    const info = await stat(filePath);
-    if (!info.isFile()) throw new Error("not_file");
-  } catch {
-    filePath = join(DIST_DIR, "index.html");
+  const candidate = safeStaticPath(pathname);
+  if (candidate) {
+    try {
+      const info = await stat(candidate);
+      if (info.isFile()) {
+        response.writeHead(200, withSecurityHeaders({ "Content-Type": MIME_TYPES.get(extname(candidate)) || "application/octet-stream", "Cache-Control": extname(candidate) === ".html" ? "no-store" : "public, max-age=31536000, immutable" }));
+        response.end(await readFile(candidate));
+        return;
+      }
+    } catch {}
   }
   try {
-    const body = await readFile(filePath);
-    response.writeHead(200, withSecurityHeaders({
-      "Content-Type": MIME_TYPES.get(extname(filePath)) || "application/octet-stream",
-      "Cache-Control": filePath.endsWith("index.html") ? "no-cache" : "public, max-age=31536000, immutable",
-    }));
-    response.end(body);
-  } catch {
-    response.writeHead(503, withSecurityHeaders({ "Content-Type": "text/plain; charset=utf-8" }));
-    response.end("Production build not found. Run npm run build first.");
-  }
+    response.writeHead(200, withSecurityHeaders({ "Content-Type": "text/html; charset=utf-8", "Cache-Control": "no-store" }));
+    response.end(await readFile(join(DIST_DIR, "index.html")));
+  } catch { sendJson(response, 500, { error: "build_missing" }); }
 }
 
-createServer(async (request, response) => {
+const server = createServer(async (request, response) => {
+  const url = new URL(request.url || "/", `http://${request.headers.host || `${HOST}:${PORT}`}`);
   try {
-    const url = new URL(request.url || "/", `http://${request.headers.host || "localhost"}`);
     if (url.pathname.startsWith("/api/")) await handleApi(request, response, url);
-    else await serveStatic(response, decodeURIComponent(url.pathname));
-  } catch {
-    if (!response.headersSent) sendJson(response, 500, { error: "internal_error" });
-    else response.end();
-  }
-}).listen(PORT, HOST, () => console.log(`HuntPulse server listening on http://${HOST}:${PORT}`));
+    else await serveStatic(response, url.pathname);
+  } catch { sendJson(response, 500, { error: "internal_error" }); }
+});
+
+server.listen(PORT, HOST, () => { console.log(`HuntPulse server listening on http://${HOST}:${PORT}`); });
+
+export { fetchHh, fetchTrudvsem, fetchRemoteOk, fetchWwr, fetchRemotive, fetchJobicy, fetchArbeitnow, fetchRemocate, fetchAts, fetchTelegram, handleApi };

@@ -9,6 +9,7 @@ import {
   SOURCE_NAMES,
 } from "../api/_shared.mjs";
 import { ATS_CONCURRENCY } from "../server/atsRegistry.mjs";
+import { UPSTREAM_TIMEOUT_MS } from "../server/runtimeConfig.mjs";
 import { HH_USER_AGENT } from "../server/hh.mjs";
 
 function createResponse() {
@@ -36,7 +37,7 @@ test("Vercel health endpoint exposes capability contract", () => {
   assert.equal(response.getHeader("x-content-type-options"), "nosniff");
 });
 
-test("Vercel status reports source-snapshot cache policy without upstream calls", () => {
+test("Vercel status reports source-snapshot cache policy and shared runtime limits", () => {
   const response = createResponse();
   handleStatus({ method: "GET", headers: { host: "localhost" }, url: "/api/status" }, response);
   const body = JSON.parse(response.body);
@@ -44,6 +45,7 @@ test("Vercel status reports source-snapshot cache policy without upstream calls"
   assert.equal(body.cache, "vercel-cdn");
   assert.equal(body.cacheKeyPolicy, "source-snapshot");
   assert.deepEqual(body.snapshotSources, SNAPSHOT_SOURCES);
+  assert.equal(body.upstreamTimeoutMs, UPSTREAM_TIMEOUT_MS);
   assert.equal(body.atsConcurrency, ATS_CONCURRENCY);
   assert.equal(body.cacheSeconds.hh, 300);
   assert.equal(body.cacheSeconds.jobicy, 3600);
@@ -150,12 +152,12 @@ test("Vercel API rejects non-GET health requests", () => {
   assert.deepEqual(JSON.parse(response.body), { error: "method_not_allowed" });
 });
 
-test("Arbeitnow query endpoint filters normalized jobs and keeps source data", async () => {
+test("Arbeitnow snapshot endpoint returns normalized source data", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({
     data: [
-      { slug: "qa-engineer", title: "QA Engineer", company_name: "Example QA", location: "London", remote: true, url: "https://example.test/qa", created_at: "2026-09-26T10:00:00Z" },
-      { slug: "designer", title: "Product Designer", company_name: "Example Design", location: "London", remote: false, url: "https://example.test/design", created_at: "2026-09-26T09:00:00Z" }
+      { slug: "qa-engineer", title: "QA Engineer", company_name: "Example QA", location: "London", remote: true, url: "https://www.arbeitnow.com/jobs/qa-engineer", created_at: "2026-09-26T10:00:00Z" },
+      { slug: "designer", title: "Product Designer", company_name: "Example Design", location: "London", remote: false, url: "https://www.arbeitnow.com/jobs/designer", created_at: "2026-09-26T09:00:00Z" }
     ],
     meta: { current_page: 1, last_page: 1 }
   }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -164,14 +166,15 @@ test("Arbeitnow query endpoint filters normalized jobs and keeps source data", a
     await handleSource("arbeitnow", {
       method: "GET",
       headers: { host: "localhost" },
-      url: "/api/jobs/arbeitnow?q=QA",
+      url: "/api/jobs/arbeitnow",
     }, response);
     const body = JSON.parse(response.body);
     assert.equal(response.statusCode, 200);
-    assert.equal(body.results.length, 1);
+    assert.equal(body.results.length, 2);
     assert.equal(body.results[0].title, "QA Engineer");
     assert.equal(body.results[0].source, "arbeitnow");
-    assert.equal(body.results[0].url, "https://example.test/qa");
+    assert.equal(body.results[0].url, "https://www.arbeitnow.com/jobs/qa-engineer");
+    assert.equal(body.results[1].title, "Product Designer");
     assert.equal(response.getHeader("vercel-cdn-cache-control").includes("s-maxage=1800"), true);
   } finally {
     globalThis.fetch = originalFetch;

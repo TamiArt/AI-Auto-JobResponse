@@ -4,10 +4,14 @@ export type JobSource =
   | "hh" | "habr" | "geekjob" | "finder" | "superjob" | "rabota" | "zarplata" | "trudvsem"
   | "linkedin" | "indeed" | "glassdoor" | "wellfound" | "usajobs" | "eures" | "jooble"
   | "djinni" | "remoteco" | "remoteok" | "remotive" | "weworkremotely" | "arbeitnow"
-  | "behance" | "dribbble" | "artstation" | "upwork" | "freelancer" | "kwork" | "telegram";
+  | "behance" | "dribbble" | "artstation" | "remocate" | "upwork" | "freelancer" | "kwork" | "telegram";
 
 export type ExperienceFilter = "any" | "noExperience" | "between1And3" | "between3And6" | "moreThan6";
+export type PublishedWithinFilter = "any" | "24h" | "7d" | "30d";
+export type SearchSort = "date" | "salary" | "relevance";
+export type WorkMode = "remote" | "hybrid" | "onsite" | "unknown";
 export type WorkModeFilter = "any" | "remote" | "hybrid" | "onsite";
+export type EmploymentType = "fullTime" | "partTime" | "contract" | "internship" | "unknown";
 export type EmploymentTypeFilter = "any" | "fullTime" | "partTime" | "contract" | "internship";
 
 export type SalaryCurrency = "RUB" | "USD" | "EUR" | "GBP";

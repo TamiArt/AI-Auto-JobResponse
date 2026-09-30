@@ -7,6 +7,7 @@ on:
       - main
       - fix/production-hardening
       - feature/jobos-application-studio
+      - feature/jobos-application-audit
   pull_request:
     branches:
       - main
@@ -15,7 +16,26 @@ permissions:
   contents: read
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund --prefer-offline --fetch-retries=5 --fetch-retry-factor=2
+
+      - name: Run fast preflight
+        run: npm run check:preflight
+
   verify:
+    needs: preflight
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -28,7 +48,7 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm install --no-audit --no-fund --prefer-offline --fetch-retries=5 --fetch-retry-factor=2
 
       - name: Run full checks
         run: npm run check:full

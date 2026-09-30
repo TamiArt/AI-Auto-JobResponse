@@ -11,18 +11,20 @@ import {
 } from "../server/publicFeeds.mjs";
 import { buildAtsUrl, filterAtsResults, normalizeAtsPayload } from "../server/atsFeeds.mjs";
 import { ATS_CONCURRENCY, ATS_EMPLOYERS } from "../server/atsRegistry.mjs";
+import { UPSTREAM_TIMEOUT_MS } from "../server/runtimeConfig.mjs";
+import { normalizeRemocateHtml } from "../server/remocate.mjs";
 
-const UPSTREAM_TIMEOUT_MS = 12_000;
 const API_URLS = {
-  trudvsem: "http://opendata.trudvsem.ru/api/v1/vacancies",
+  trudvsem: "https://opendata.trudvsem.ru/api/v1/vacancies",
   remoteok: "https://remoteok.com/api",
   weworkremotely: "https://weworkremotely.com/remote-jobs.rss",
   remotive: "https://remotive.com/api/remote-jobs",
   jobicy: "https://jobicy.com/api/v2/remote-jobs?count=100",
   arbeitnow: "https://www.arbeitnow.com/api/job-board-api",
+  remocate: "https://www.remocate.app/",
 };
 
-export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats", "telegram"];
+export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "ats", "telegram"];
 export const SNAPSHOT_SOURCES = ["remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
 const SNAPSHOT_SOURCE_SET = new Set(SNAPSHOT_SOURCES);
 export const CACHE_SECONDS = {
@@ -34,6 +36,7 @@ export const CACHE_SECONDS = {
   jobicy: 3600,
   remotive: 21600,
   arbeitnow: 1800,
+  remocate: 900,
 };
 
 function applyHeaders(response) {
@@ -112,6 +115,14 @@ async function loadPublicSnapshot(source) {
   return { results: filterPublicFeedResults(jobs, ""), meta: feedMeta(source) };
 }
 
+async function loadRemocate(url) {
+  const query = String(url.searchParams.get("q") || "").trim();
+  if (!query) return { status: 400, body: { error: "query_required" } };
+  const upstream = await fetchWithTimeout(`${API_URLS.remocate}?q=${encodeURIComponent(query)}`, { headers: { Accept: "text/html, application/xhtml+xml", "User-Agent": "JOBOS-AI/1.0 (+https://github.com/TamiArt/AI-Auto-JobResponse)" }, parse: "text" });
+  const results = normalizeRemocateHtml(upstream, query);
+  return { status: 200, body: { results, meta: feedMeta("remocate") } };
+}
+
 async function loadTrudvsem(url) {
   const validation = validateTrudvsemRequest(url.searchParams.get("q"), url.searchParams.get("offset"));
   if (!validation.ok) return { status: validation.status, body: { error: validation.error } };
@@ -150,14 +161,13 @@ export async function handleSource(source, request, response) {
       const result = await loadHh(url);
       return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.hh : 0);
     }
+    if (source === "remocate") {
+      const result = await loadRemocate(url);
+      return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.remocate : 0);
+    }
     if (source === "trudvsem") {
       const result = await loadTrudvsem(url);
       return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.trudvsem : 0);
-    }
-    if (source === "arbeitnow") {
-      const body = await loadPublicSnapshot(source);
-      const query = url.searchParams.get("q") || "";
-      return sendJson(response, 200, { ...body, results: filterPublicFeedResults(body.results, query) }, CACHE_SECONDS[source]);
     }
     if (!SNAPSHOT_SOURCE_SET.has(source)) return sendJson(response, 404, { error: "unsupported_source" });
     if (rejectSnapshotQuery(url, response)) return;

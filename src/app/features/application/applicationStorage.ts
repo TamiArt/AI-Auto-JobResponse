@@ -1,4 +1,5 @@
 import type { SearchResult } from "../search/searchService";
+import { isSearchResult } from "../search/searchContract.js";
 
 export type ApplicationStatus = "draft" | "ready" | "opened";
 
@@ -15,6 +16,21 @@ export interface ApplicationRecord {
 const KEY = "jobos_applications_v1";
 const SELECTED_KEY = "jobos.application.selected";
 
+const MATERIAL_KINDS = new Set<ApplicationRecord["materialKind"]>(["cover-letter", "recruiter-message", "questionnaire", "tech-answer"]);
+const STATUSES = new Set<ApplicationStatus>(["draft", "ready", "opened"]);
+
+function isApplicationRecord(value: unknown): value is ApplicationRecord {
+  if (!value || typeof value !== "object") return false;
+  const item = value as Partial<ApplicationRecord>;
+  return typeof item.id === "string" && Boolean(item.id.trim())
+    && typeof item.jobId === "string" && Boolean(item.jobId.trim())
+    && isSearchResult(item.job)
+    && typeof item.material === "string"
+    && MATERIAL_KINDS.has(item.materialKind as ApplicationRecord["materialKind"])
+    && STATUSES.has(item.status as ApplicationStatus)
+    && typeof item.updatedAt === "string" && Boolean(item.updatedAt.trim());
+}
+
 function read<T>(key: string, fallback: T): T {
   try {
     const raw = localStorage.getItem(key);
@@ -25,7 +41,8 @@ function read<T>(key: string, fallback: T): T {
 }
 
 export function loadSelectedApplication(): SearchResult | null {
-  return read<SearchResult | null>(SELECTED_KEY, null);
+  const value = read<SearchResult | null>(SELECTED_KEY, null);
+  return isSearchResult(value) ? value : null;
 }
 
 export function saveSelectedApplication(job: SearchResult): void {
@@ -37,7 +54,8 @@ export function clearSelectedApplication(): void {
 }
 
 export function loadApplications(): ApplicationRecord[] {
-  return read<ApplicationRecord[]>(KEY, []).filter((item) => item?.id && item?.jobId && item?.job);
+  const value = read<unknown>(KEY, []);
+  return Array.isArray(value) ? value.filter(isApplicationRecord) : [];
 }
 
 export function saveApplication(record: ApplicationRecord): void {

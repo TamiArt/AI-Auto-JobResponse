@@ -1,7 +1,10 @@
+import { execFile } from "node:child_process";
 import { readdir, readFile } from "node:fs/promises";
 import { extname, join, relative } from "node:path";
+import { promisify } from "node:util";
 import { fileURLToPath } from "node:url";
 
+const execFileAsync = promisify(execFile);
 const ROOT = fileURLToPath(new URL("../", import.meta.url));
 const SOURCE_DIRS = [
   fileURLToPath(new URL("../src/", import.meta.url)),
@@ -17,6 +20,7 @@ const ROOT_CODE_FILES = [
 ];
 const MAX_LINES = 800;
 const SOURCE_EXTENSIONS = new Set([".js", ".jsx", ".mjs", ".ts", ".tsx", ".css"]);
+const NODE_CHECK_EXTENSIONS = new Set([".js", ".mjs"]);
 const problems = [];
 
 async function walk(directory) {
@@ -38,9 +42,18 @@ for (const file of files) {
   if (lineCount > MAX_LINES) problems.push(`${relative(ROOT, file)}: ${lineCount} lines (max ${MAX_LINES})`);
 }
 
+for (const file of files.filter((candidate) => NODE_CHECK_EXTENSIONS.has(extname(candidate)))) {
+  try {
+    await execFileAsync(process.execPath, ["--check", file]);
+  } catch (error) {
+    const detail = error?.stderr?.trim() || error?.message || "syntax check failed";
+    problems.push(`${relative(ROOT, file)}: JavaScript syntax error — ${detail}`);
+  }
+}
+
 if (problems.length) {
-  console.error("Structure check failed:\n" + problems.map((item) => `- ${item}`).join("\n"));
+  console.error("Structure/syntax check failed:\n" + problems.map((item) => `- ${item}`).join("\n"));
   process.exitCode = 1;
 } else {
-  console.log(`Structure check passed: every source/server/api/test file is <= ${MAX_LINES} lines.`);
+  console.log(`Structure/syntax check passed: every source/server/api/test file is <= ${MAX_LINES} lines and all JS/MJS files parse.`);
 }

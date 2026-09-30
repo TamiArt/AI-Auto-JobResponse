@@ -1,4 +1,6 @@
 import { spawn } from "node:child_process";
+import { UPSTREAM_TIMEOUT_MS } from "../server/runtimeConfig.mjs";
+import { ATS_CONCURRENCY } from "../server/atsRegistry.mjs";
 
 const HOST = "127.0.0.1";
 const PORT = 4199;
@@ -59,8 +61,8 @@ try {
   if (status.cache?.feeds?.entries !== 0 || status.cache?.ats?.entries !== 0) {
     throw new Error("Fresh server status should start with empty caches");
   }
-  if (status.limits?.upstreamTimeoutMs !== 30_000 || status.limits?.atsConcurrency !== 4) {
-    throw new Error("Invalid /api/status limits");
+  if (status.limits?.upstreamTimeoutMs !== UPSTREAM_TIMEOUT_MS || status.limits?.atsConcurrency !== ATS_CONCURRENCY) {
+    throw new Error(`Invalid /api/status limits: upstreamTimeoutMs=${status.limits?.upstreamTimeoutMs}, atsConcurrency=${status.limits?.atsConcurrency}`);
   }
 
   const indexResponse = await fetch(`${BASE_URL}/`);
