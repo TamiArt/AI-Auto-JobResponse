@@ -112,6 +112,10 @@ Telegram является отдельным источником ваканси
 - [x] Arbeitnow job_types is treated as mixed free-text metadata: seniority-only values do not become fullTime; explicit full-time/part-time/contract/internship signals are required before setting employmentType.
 - [ ] Full active-source verification remains open; this checkbox covers only the verified Arbeitnow semantics above.
 
+- [x] Remotive public API semantics verified against current documentation: jobs expose title/company, candidate_required_location, publication_date, URL, category/job_type, salary and description; public listings are delayed and require Remotive attribution/link-back.
+- [x] Remotive normalizer preserves the source's remote-only semantics, description and explicit employment type instead of inferring full-time from missing data.
+- [x] Jobicy public Jobs API semantics verified against current documentation: id/url/jobTitle/companyName/jobIndustry/jobType/jobGeo/jobLevel/jobDescription/pubDate/salaryMin/salaryMax/salaryCurrency/salaryPeriod are documented; public requests do not require an API key and return Jobicy listing URLs.
+- [x] Jobicy normalizer preserves remote semantics, job level, description, explicit employment type and salary metadata instead of discarding source fields.
 - [x] Jobicy salary normalizer preserves numeric bounds, ISO currency and `salaryPeriod` metadata from the public Jobs API.
 
 - [x] HH salary upstream narrowing removed: JOBOS uses HH `label=with_salary` only when salary filtering is active and applies the authoritative exact range/currency filter after normalization.

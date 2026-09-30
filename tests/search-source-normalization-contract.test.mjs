@@ -37,6 +37,59 @@ test("public feed normalizers reject malformed records and keep safe URLs", () =
   assert.equal(normalizeJobicyPayload({ jobs: [{ id: "1", jobTitle: "QA", url: "/job/1" }] }).length, 0);
 });
 
+test("Remotive normalization preserves documented remote and employment semantics", () => {
+  const [job] = normalizeRemotivePayload({
+    jobs: [{
+      id: "rem-1",
+      title: "QA Engineer",
+      company_name: "Acme",
+      candidate_required_location: "Worldwide",
+      publication_date: "2026-09-29T10:00:00Z",
+      url: "https://remotive.com/remote-jobs/software-development/qa-engineer-1",
+      category: "Software Development",
+      job_type: "Full-time",
+      salary: "$70,000 - $90,000",
+      description: "<p>Test web applications.</p>",
+    }],
+  });
+  assertSafeJob(job);
+  assert.equal(job.workMode, "remote");
+  assert.equal(job.employmentType, "fullTime");
+  assert.equal(job.location, "Worldwide");
+  assert.equal(job.description, "Test web applications.");
+});
+
+test("Jobicy normalization preserves documented salary, level, remote and employment fields", () => {
+  const [job] = normalizeJobicyPayload({
+    jobs: [{
+      id: 123,
+      url: "https://jobicy.com/jobs/example-role",
+      jobTitle: "Senior QA Engineer",
+      companyName: "Acme",
+      jobType: ["full-time"],
+      jobGeo: "Anywhere",
+      jobLevel: "Senior",
+      jobDescription: "<p>Own automated testing.</p>",
+      jobIndustry: ["Engineering"],
+      pubDate: "2026-09-29T10:00:00Z",
+      salaryMin: 90000,
+      salaryMax: 125000,
+      salaryCurrency: "USD",
+      salaryPeriod: "yearly",
+    }],
+  });
+  assertSafeJob(job);
+  assert.equal(job.workMode, "remote");
+  assert.equal(job.employmentType, "fullTime");
+  assert.equal(job.experience, "Senior");
+  assert.equal(job.location, "Anywhere");
+  assert.equal(job.description, "Own automated testing.");
+  assert.match(job.salary, /90000/);
+  assert.match(job.salary, /125000/);
+  assert.match(job.salary, /USD/);
+  assert.match(job.salary, /yearly/);
+});
+
 test("Arbeitnow normalization preserves remote flag and salary data", () => {
   const [job] = normalizeArbeitnowPayload({
     data: [{

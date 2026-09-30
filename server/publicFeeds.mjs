@@ -17,6 +17,19 @@ function safeUrl(value) {
   return /^https?:\/\//i.test(url) ? url : "";
 }
 
+function plainText(value) {
+  return text(value).replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ");
+}
+
+function inferEmploymentType(value) {
+  const signal = Array.isArray(value) ? value.map(text).filter(Boolean).join(" ") : text(value);
+  if (/intern|internship|trainee|стаж/i.test(signal)) return "internship";
+  if (/part[\s-]?time|непол/i.test(signal)) return "partTime";
+  if (/contract|freelance|контракт/i.test(signal)) return "contract";
+  if (/full[\s-]?time|полный|полная|vollzeit/i.test(signal)) return "fullTime";
+  return undefined;
+}
+
 function salaryFromRemoteOk(job) {
   if (text(job.salary)) return text(job.salary);
   const min = Number(job.salary_min || 0);
@@ -150,6 +163,9 @@ export function normalizeRemotivePayload(payload) {
       publishedTimestamp: timestamp(job.publication_date),
       url,
       tags: [job.category, job.job_type].map(text).filter(Boolean).slice(0, 5),
+      description: plainText(job.description),
+      workMode: "remote",
+      employmentType: inferEmploymentType(job.job_type),
     };
   }).filter(Boolean);
 }
@@ -166,17 +182,21 @@ export function normalizeJobicyPayload(payload) {
     const currency = text(job.salaryCurrency || job.currency).toUpperCase();
     const period = text(job.salaryPeriod || job.salary_period);
     const salary = text(job.salary) || [min && `от ${min}`, max && `до ${max}`, currency, period].filter(Boolean).join(" ");
+    const jobTypes = Array.isArray(job.jobType) ? job.jobType.map(text).filter(Boolean) : [text(job.jobType)].filter(Boolean);
     return {
       id: `jobicy-${id}`,
       title,
       company: text(job.companyName || job.company) || "Компания не указана",
       salary: salary || "Зарплата не указана",
       location: text(job.jobGeo || job.location) || DEFAULT_LOCATION,
-      experience: "Опыт не указан",
+      experience: text(job.jobLevel) || "Опыт не указан",
       publishedTimestamp: timestamp(job.pubDate || job.publicationDate || job.date),
       url,
-      tags: [job.jobIndustry, job.jobType, ...(Array.isArray(job.jobTags) ? job.jobTags : [])]
-        .map(text).filter(Boolean).slice(0, 5),
+      tags: [job.jobIndustry, ...jobTypes, ...(Array.isArray(job.jobTags) ? job.jobTags : [])]
+        .flat().map(text).filter(Boolean).slice(0, 5),
+      description: plainText(job.jobDescription || job.description),
+      workMode: "remote",
+      employmentType: inferEmploymentType(jobTypes),
     };
   }).filter(Boolean);
 }
