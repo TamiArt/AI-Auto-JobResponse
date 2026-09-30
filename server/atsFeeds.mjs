@@ -133,6 +133,9 @@ export function normalizeWorkable(payload, employer) {
       company: employer.company, location, experience: item.experience, published: item.published_on || item.created_at,
       url: item.shortlink || item.application_url || item.url,
       tags: [item.department, item.employment_type, item.workplace_type, item.industry],
+      description: item.description,
+      workplace: item.workplace_type || (item.telecommuting ? "Remote" : ""),
+      employment: item.employment_type,
     });
   }).filter(Boolean);
 }

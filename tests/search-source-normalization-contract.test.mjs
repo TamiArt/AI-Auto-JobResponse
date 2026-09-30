@@ -132,7 +132,28 @@ test("ATS normalizers accept provider payloads only when a direct URL can be bui
   assert.equal(smart.employmentType, "fullTime");
   assert.equal(smart.description, "Test web applications.");
   assertSafeJob(normalizeRecruitee({ offers: [{ id: 1, title: "QA", careers_url: "https://acme.recruitee.com/o/qa" }] }, { ...employer, provider: "recruitee" })[0]);
-  assertSafeJob(normalizeWorkable({ jobs: [{ shortcode: "1", title: "QA", url: "https://apply.workable.com/acme/j/1/" }] }, { ...employer, provider: "workable" })[0]);
+  const workable = normalizeWorkable({
+    jobs: [{
+      shortcode: "1",
+      title: "QA",
+      country: "United States",
+      state: "Illinois",
+      city: "Chicago",
+      department: "Engineering",
+      workplace_type: "hybrid",
+      employment_type: "Full-time",
+      experience: "Mid-level",
+      published_on: "2026-09-29T10:00:00Z",
+      shortlink: "https://apply.workable.com/acme/j/1/",
+      description: "Test web applications.",
+    }],
+  }, { ...employer, provider: "workable" })[0];
+  assertSafeJob(workable);
+  assert.equal(workable.location, "Chicago, Illinois, United States");
+  assert.equal(workable.workMode, "hybrid");
+  assert.equal(workable.employmentType, "fullTime");
+  assert.equal(workable.experience, "Mid-level");
+  assert.equal(workable.description, "Test web applications.");
 });
 
 test("Trudvsem and Remocate reject unusable vacancies", () => {
