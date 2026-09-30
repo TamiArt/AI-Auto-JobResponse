@@ -121,6 +121,7 @@ Telegram является отдельным источником ваканси
 - [x] Remote OK public feed semantics verified against the current source documentation: JSON/RSS feeds are public and require credit/link-back; the normalizer preserves the documented description field and remote-only source semantics without inventing employment type.
 - [x] ATS structured semantics verified for current public Greenhouse/Lever/Ashby/SmartRecruiters contracts where fields are exposed: description, workplace type and explicit employment type are preserved when supplied; unknown values remain unknown instead of being invented. Lever/Ashby/SmartRecruiters adapters now map their documented structured fields into the common contract.
 - [x] Recruitee public Careers Site `/api/offers/` semantics verified: it returns published company jobs; the normalizer preserves description, department/employment tags and careers/apply URLs when supplied, without treating employment type as experience. Recruitee's current documentation also announces authorization for Careers Site API calls from 10 February 2027, so this source remains subject to a future authentication migration.
+- [x] Vacancy URL contract verified for active ATS/public-feed normalizers: browser-facing job pages are preserved or constructed from documented source identifiers; API endpoints are not exposed as vacancy links. Representative contract tests cover Greenhouse, Lever, Ashby, SmartRecruiters, Recruitee, Workable, Remote OK, Arbeitnow, We Work Remotely, Remotive and Jobicy. Live availability/HTTP HEAD checks are intentionally not part of CI because provider availability is transient.
 
 - [x] HH salary upstream narrowing removed: JOBOS uses HH `label=with_salary` only when salary filtering is active and applies the authoritative exact range/currency filter after normalization.
 
@@ -215,7 +216,7 @@ Search and matching are separate product modes. Ordinary Search must not silentl
 2. Capture representative real payload fixtures and test each normalizer.
 3. [x] Test malformed/incomplete upstream payloads and missing id/title/company/url; all BFF/HH client envelopes now reject malformed top-level payloads instead of silently converting missing result arrays into an empty successful search.
 3a. [x] Harden HH pagination envelope validation: non-empty page counts must keep the current page inside the reported page range; the empty `pages=0,page=0` response remains valid.
-5. Verify real vacancy URLs and source-specific viewer behavior.
+5. [x] Verify real vacancy URLs and source-specific viewer behavior.
 6. Verify salary amount/range/currency/period semantics.
 7. Verify remote/hybrid/office and employment semantics from structured source fields before heuristic fallback.
 7. Verify cross-source deduplication.
