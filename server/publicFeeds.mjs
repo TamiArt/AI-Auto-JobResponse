@@ -64,8 +64,7 @@ export function normalizeArbeitnowPayload(payload) {
     const slug = text(job?.slug);
     const url = safeUrl(job?.url);
     const title = text(job?.title);
-    const isArbeitnowJobUrl = /^https?:\/\/www?\.arbeitnow\.com\/(?:jobs\/companies\/|view\/)/i.test(url)
-      || /^https?:\/\/arbeitnow\.com\/(?:jobs\/companies\/|view\/)/i.test(url);
+    const isArbeitnowJobUrl = /^https?:\/\/(?:www\.)?arbeitnow\.com\/(?:jobs\/|view\/)/i.test(url);
     if (!title || !url || !isArbeitnowJobUrl) return null;
     const jobTypes = Array.isArray(job?.job_types) ? job.job_types.map(text).filter(Boolean) : [];
     return {
