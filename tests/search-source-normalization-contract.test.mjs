@@ -131,7 +131,20 @@ test("ATS normalizers accept provider payloads only when a direct URL can be bui
   assert.equal(smart.workMode, "remote");
   assert.equal(smart.employmentType, "fullTime");
   assert.equal(smart.description, "Test web applications.");
-  assertSafeJob(normalizeRecruitee({ offers: [{ id: 1, title: "QA", careers_url: "https://acme.recruitee.com/o/qa" }] }, { ...employer, provider: "recruitee" })[0]);
+  const recruitee = normalizeRecruitee({
+    offers: [{
+      id: 1,
+      title: "QA",
+      careers_url: "https://acme.recruitee.com/o/qa",
+      description: "<p>Test web applications.</p>",
+      department: { name: "Engineering" },
+      employment_type: "Full-time",
+    }],
+  }, { ...employer, provider: "recruitee" })[0];
+  assertSafeJob(recruitee);
+  assert.equal(recruitee.description, "Test web applications.");
+  assert.ok(recruitee.tags.includes("Full-time"));
+  assert.ok(recruitee.tags.includes("Engineering"));
   const workable = normalizeWorkable({
     jobs: [{
       shortcode: "1",

@@ -118,9 +118,10 @@ export function normalizeRecruitee(payload, employer) {
     const location = text(item.location || item.city || locations.map((v) => v?.city || v?.name).filter(Boolean).join(", "));
     return job({
       provider: "recruitee", id: item.id || item.slug, title: item.title, company: employer.company,
-      salary: item.salary, location, experience: item.employment_type || item.employmentType,
-      published: item.published_at || item.created_at, url: item.careers_url || item.url,
-      tags: [item.department, item.department?.name, item.remote ? "Remote" : ""],
+      salary: item.salary, location, experience: item.experience_level || item.experienceLevel,
+      published: item.published_at || item.created_at, url: item.careers_url || item.careers_apply_url || item.url,
+      tags: [item.department, item.department?.name, item.employment_type, item.remote ? "Remote" : ""],
+      description: item.description,
     });
   }).filter(Boolean);
 }
