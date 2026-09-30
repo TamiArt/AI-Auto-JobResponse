@@ -18,7 +18,11 @@ function safeUrl(value) {
 }
 
 function plainText(value) {
-  return text(value).replace(/<[^>]*>/g, " ").replace(/&nbsp;/gi, " ");
+  return text(value)
+    .replace(/<[^>]*>/g, " ")
+    .replace(/&nbsp;/gi, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
 function inferEmploymentType(value) {
