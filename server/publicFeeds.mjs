@@ -71,6 +71,8 @@ export function normalizeRemoteOkPayload(payload) {
       publishedTimestamp: timestamp(job.epoch || job.date),
       url,
       tags: Array.isArray(job.tags) ? job.tags.map(text).filter(Boolean).slice(0, 5) : [],
+      description: plainText(job.description),
+      workMode: "remote",
     };
   }).filter(Boolean);
 }

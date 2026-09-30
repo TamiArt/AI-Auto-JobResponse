@@ -27,8 +27,10 @@ function assertSafeJob(job) {
 
 test("public feed normalizers reject malformed records and keep safe URLs", () => {
   assert.deepEqual(normalizeRemoteOkPayload([{ id: "1", position: "QA", url: "javascript:alert(1)" }]), []);
-  const remote = normalizeRemoteOkPayload([{ id: "1", position: "QA Engineer", url: "https://remoteok.com/1", company: "Acme" }]);
+  const remote = normalizeRemoteOkPayload([{ id: "1", position: "QA Engineer", url: "https://remoteok.com/1", company: "Acme", location: "Worldwide", description: "<p>  Test web applications.  </p>", tags: ["testing"] }]);
   assertSafeJob(remote[0]);
+  assert.equal(remote[0].workMode, "remote");
+  assert.equal(remote[0].description, "Test web applications.");
 
   const wwr = normalizeWwrRss("<rss><channel><item><title>Acme: QA Engineer</title><link>https://weworkremotely.com/jobs/1</link><pubDate>Sun, 27 Sep 2026 10:00:00 GMT</pubDate><region>Anywhere in the World</region><category>Programming</category><type>Full-Time</type><description><![CDATA[  <p>  Test web applications.  </p>  ]]></description></item></channel></rss>");
   assertSafeJob(wwr[0]);
