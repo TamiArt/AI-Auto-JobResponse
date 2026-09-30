@@ -156,8 +156,8 @@ test("Arbeitnow query endpoint filters normalized jobs and keeps source data", a
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response(JSON.stringify({
     data: [
-      { slug: "qa-engineer", title: "QA Engineer", company_name: "Example QA", location: "London", remote: true, url: "https://example.test/qa", created_at: "2026-09-26T10:00:00Z" },
-      { slug: "designer", title: "Product Designer", company_name: "Example Design", location: "London", remote: false, url: "https://example.test/design", created_at: "2026-09-26T09:00:00Z" }
+      { slug: "qa-engineer", title: "QA Engineer", company_name: "Example QA", location: "London", remote: true, url: "https://www.arbeitnow.com/jobs/qa-engineer", created_at: "2026-09-26T10:00:00Z" },
+      { slug: "designer", title: "Product Designer", company_name: "Example Design", location: "London", remote: false, url: "https://www.arbeitnow.com/jobs/designer", created_at: "2026-09-26T09:00:00Z" }
     ],
     meta: { current_page: 1, last_page: 1 }
   }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -173,7 +173,7 @@ test("Arbeitnow query endpoint filters normalized jobs and keeps source data", a
     assert.equal(body.results.length, 1);
     assert.equal(body.results[0].title, "QA Engineer");
     assert.equal(body.results[0].source, "arbeitnow");
-    assert.equal(body.results[0].url, "https://example.test/qa");
+    assert.equal(body.results[0].url, "https://www.arbeitnow.com/jobs/qa-engineer");
     assert.equal(response.getHeader("vercel-cdn-cache-control").includes("s-maxage=1800"), true);
   } finally {
     globalThis.fetch = originalFetch;
