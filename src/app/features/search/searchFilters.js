@@ -89,9 +89,9 @@ export function normalizeSalary(salary) {
     : /\b(eur|евро)\b|€/.test(text) ? "EUR"
     : /\b(gbp|фунт)\b|£/.test(text) ? "GBP"
     : null;
-  const period = /час|hour|hourly|в час/.test(text) ? "hour"
-    : /год|year|annual|annually|в год/.test(text) ? "year"
-    : /месяц|month|monthly|в месяц/.test(text) ? "month"
+  const period = /час|hour|hourly|per hour|в час/.test(text) ? "hour"
+    : /год|year|yearly|annual|annually|per annum|per year|в год/.test(text) ? "year"
+    : /месяц|month|monthly|per month|в месяц/.test(text) ? "month"
     : "unknown";
   return {
     min: numbers.length > 1 ? Math.min(...numbers) : numbers[0] ?? null,
