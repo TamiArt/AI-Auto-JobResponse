@@ -9,6 +9,8 @@ import {
   matchesLocation,
   matchesEmploymentType,
   normalizeSalary,
+  inferWorkMode,
+  inferEmploymentType,
   matchesQuery,
   matchesPublishedWithin,
 } from "../src/app/features/search/searchFilters.js";
@@ -95,6 +97,21 @@ test("work mode and employment filters honor explicit normalized values", () => 
   assert.equal(matchesWorkMode({ ...baseRequest, workMode: "remote" }, { ...job, workMode: "onsite" }), false);
   assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "internship" }, { ...job, employmentType: "internship" }), true);
   assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "internship" }, { ...job, employmentType: "fullTime" }), false);
+});
+
+test("structured work mode and employment type override conflicting text heuristics", () => {
+  assert.equal(inferWorkMode({
+    workMode: "onsite",
+    location: "Remote",
+    description: "Work from home",
+    tags: ["Remote"],
+  }), "onsite");
+  assert.equal(inferEmploymentType({
+    employmentType: "fullTime",
+    title: "QA Intern",
+    description: "Internship program",
+    tags: ["intern"],
+  }), "fullTime");
 });
 
 test("experience filters do not treat unknown experience as a match", () => {
