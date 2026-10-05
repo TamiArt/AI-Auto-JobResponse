@@ -9,6 +9,8 @@ import {
   matchesLocation,
   matchesEmploymentType,
   normalizeSalary,
+  inferWorkMode,
+  inferEmploymentType,
   matchesQuery,
   matchesPublishedWithin,
 } from "../src/app/features/search/searchFilters.js";
@@ -97,6 +99,21 @@ test("work mode and employment filters honor explicit normalized values", () => 
   assert.equal(matchesEmploymentType({ ...baseRequest, employmentType: "internship" }, { ...job, employmentType: "fullTime" }), false);
 });
 
+test("structured work mode and employment type override conflicting text heuristics", () => {
+  assert.equal(inferWorkMode({
+    workMode: "onsite",
+    location: "Remote",
+    description: "Work from home",
+    tags: ["Remote"],
+  }), "onsite");
+  assert.equal(inferEmploymentType({
+    employmentType: "fullTime",
+    title: "QA Intern",
+    description: "Internship program",
+    tags: ["intern"],
+  }), "fullTime");
+});
+
 test("experience filters do not treat unknown experience as a match", () => {
   assert.equal(matchesExperience("between1And3", "Опыт не указан"), false);
   assert.equal(matchesExperience("noExperience", "Без опыта"), true);
@@ -152,4 +169,29 @@ test("publication date filter accepts recent jobs and rejects stale jobs", () =>
   assert.equal(matchesPublishedWithin({ publishedWithin: "24h" }, now - 2 * 24 * 60 * 60 * 1000, now), false);
   assert.equal(matchesPublishedWithin({ publishedWithin: "7d" }, now - 6 * 24 * 60 * 60 * 1000, now), true);
   assert.equal(matchesPublishedWithin({ publishedWithin: "any" }, now - 365 * 24 * 60 * 60 * 1000, now), true);
+});
+
+
+test("salary normalization preserves source-declared yearly and monthly periods", () => {
+  assert.equal(normalizeSalary("90000–125000 USD yearly").min, 90000);
+  assert.equal(normalizeSalary("90000–125000 USD yearly").max, 125000);
+  assert.equal(normalizeSalary("90000–125000 USD yearly").currency, "USD");
+  assert.equal(normalizeSalary("90000–125000 USD yearly").period, "year");
+  assert.equal(normalizeSalary("€4,000–€5,000 per month").period, "month");
+});
+
+test("salary normalization keeps unknown period instead of inventing one", () => {
+  assert.equal(normalizeSalary("90000–125000 USD").period, "unknown");
+  assert.equal(normalizeSalary("90000–125000 USD weekly").period, "unknown");
+});
+
+test("salary range filtering uses overlap semantics for lower-only and upper-only values", () => {
+  assert.equal(matchesSalary({ ...baseRequest, salaryFrom: "100000", salaryCurrency: "USD" }, "от 120000 USD"), true);
+  assert.equal(matchesSalary({ ...baseRequest, salaryTo: "100000", salaryCurrency: "USD" }, "до 90000 USD"), true);
+  assert.equal(matchesSalary({ ...baseRequest, salaryTo: "100000", salaryCurrency: "USD" }, "от 120000 USD"), false);
+});
+
+test("salary filtering never treats a missing currency as the requested currency", () => {
+  assert.equal(matchesSalary({ ...baseRequest, salaryFrom: "50000", salaryCurrency: "USD" }, "50000–70000"), false);
+  assert.equal(matchesSalary({ ...baseRequest, salaryFrom: "50000", salaryCurrency: "USD" }, "50000–70000 EUR"), false);
 });

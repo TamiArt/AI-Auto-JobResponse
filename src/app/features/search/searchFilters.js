@@ -89,9 +89,9 @@ export function normalizeSalary(salary) {
     : /\b(eur|евро)\b|€/.test(text) ? "EUR"
     : /\b(gbp|фунт)\b|£/.test(text) ? "GBP"
     : null;
-  const period = /час|hour|hourly|в час/.test(text) ? "hour"
-    : /год|year|annual|annually|в год/.test(text) ? "year"
-    : /месяц|month|monthly|в месяц/.test(text) ? "month"
+  const period = /час|hour|hourly|per hour|в час/.test(text) ? "hour"
+    : /год|year|yearly|annual|annually|per annum|per year|в год/.test(text) ? "year"
+    : /месяц|month|monthly|per month|в месяц/.test(text) ? "month"
     : "unknown";
   return {
     min: numbers.length > 1 ? Math.min(...numbers) : numbers[0] ?? null,
@@ -103,6 +103,7 @@ export function normalizeSalary(salary) {
 }
 
 export function inferWorkMode(item) {
+  if (item.workMode && item.workMode !== "any" && item.workMode !== "unknown") return item.workMode;
   const text = normalizeText([item.location, item.title, item.description, ...(item.tags || [])].join(" "));
   if (HYBRID_SIGNALS.test(text)) return "hybrid";
   if (WORK_MODE_SIGNALS.test(text)) return "remote";
@@ -125,6 +126,7 @@ export function matchesLocation(request, item) {
 }
 
 export function inferEmploymentType(item) {
+  if (item.employmentType && item.employmentType !== "any" && item.employmentType !== "unknown") return item.employmentType;
   const text = normalizeText([item.title, item.description, ...(item.tags || [])].join(" "));
   if (EMPLOYMENT_SIGNALS.internship.test(text)) return "internship";
   if (EMPLOYMENT_SIGNALS.partTime.test(text)) return "partTime";

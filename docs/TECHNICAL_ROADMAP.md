@@ -217,15 +217,15 @@ Search and matching are separate product modes. Ordinary Search must not silentl
 3. [x] Test malformed/incomplete upstream payloads and missing id/title/company/url; all BFF/HH client envelopes now reject malformed top-level payloads instead of silently converting missing result arrays into an empty successful search.
 3a. [x] Harden HH pagination envelope validation: non-empty page counts must keep the current page inside the reported page range; the empty `pages=0,page=0` response remains valid.
 5. [x] Verify real vacancy URLs and source-specific viewer behavior.
-6. Verify salary amount/range/currency/period semantics.
-7. Verify remote/hybrid/office and employment semantics from structured source fields before heuristic fallback.
-7. Verify cross-source deduplication.
-8. Verify HH pagination and source failure isolation.
-9. Verify result filters against real payloads.
-10. Make source capabilities/errors/cache freshness visible to the user.
-11. Add publication-date filtering, sorting, load-more/pagination and vacancy details.
-12. Career Profile → separate matching → explainable compatibility foundation is implemented; next strengthen requirement extraction and profile-fact workflows.
-13. Then expand Application Tracker, persistent user data and Telegram Mini App synchronization.
+6. [x] Verify salary amount/range/currency/period semantics at the normalization boundary: explicit yearly/monthly/hourly periods are recognized, lower-only/upper-only ranges remain ranges, requested currency never falls back to an unknown/mismatched currency, and representative Jobicy/Remote OK/Ashby salary payloads have contract coverage. Remaining live-payload fixture capture is tracked by priorities 1–2.
+7. [x] Verify remote/hybrid/office and employment semantics from structured source fields before heuristic fallback: structured ATS/public-feed values are preserved and now take precedence over conflicting text heuristics; Recruitee structured remote/employment fields are covered by contract tests.
+8. [x] Verify cross-source deduplication.
+9. Verify HH pagination and source failure isolation.
+10. Verify result filters against real payloads.
+11. Make source capabilities/errors/cache freshness visible to the user.
+12. Add publication-date filtering, sorting, load-more/pagination and vacancy details.
+13. Career Profile → separate matching → explainable compatibility foundation is implemented; next strengthen requirement extraction and profile-fact workflows.
+14. Then expand Application Tracker, persistent user data and Telegram Mini App synchronization.
 
 ## Explicit product invariants
 
