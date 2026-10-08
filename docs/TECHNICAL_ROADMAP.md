@@ -217,7 +217,7 @@ Search and matching are separate product modes. Ordinary Search must not silentl
 3. [x] Test malformed/incomplete upstream payloads and missing id/title/company/url; all BFF/HH client envelopes now reject malformed top-level payloads instead of silently converting missing result arrays into an empty successful search.
 3a. [x] Harden HH pagination envelope validation: non-empty page counts must keep the current page inside the reported page range; the empty `pages=0,page=0` response remains valid.
 5. [x] Verify real vacancy URLs and source-specific viewer behavior.
-6. Verify salary amount/range/currency/period semantics.
+6. [x] Verify salary amount/range/currency/period semantics at the normalization boundary: explicit yearly/monthly/hourly periods are recognized, lower-only/upper-only ranges remain ranges, requested currency never falls back to an unknown/mismatched currency, and representative Jobicy/Remote OK/Ashby salary payloads have contract coverage. Remaining live-payload fixture capture is tracked by priorities 1–2.
 7. Verify remote/hybrid/office and employment semantics from structured source fields before heuristic fallback.
 7. Verify cross-source deduplication.
 8. Verify HH pagination and source failure isolation.
