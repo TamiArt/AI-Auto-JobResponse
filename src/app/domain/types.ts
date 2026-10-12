@@ -1,7 +1,7 @@
 export type Theme = "dark" | "light";
 
 export type JobSource =
-  | "hh" | "habr" | "geekjob" | "finder" | "superjob" | "rabota" | "zarplata" | "trudvsem"
+  | "hh" | "habr" | "geekjob" | "finder" | "superjob" | "avito" | "rabota" | "zarplata" | "trudvsem"
   | "linkedin" | "indeed" | "glassdoor" | "wellfound" | "usajobs" | "eures" | "jooble"
   | "djinni" | "remoteco" | "remoteok" | "remotive" | "weworkremotely" | "arbeitnow"
   | "behance" | "dribbble" | "artstation" | "remocate" | "upwork" | "freelancer" | "kwork" | "telegram";
