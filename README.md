@@ -33,6 +33,7 @@ npm run check:full
 
 - Работа России;
 - HH.ru;
+- SuperJob (официальный API; требуется SUPERJOB_APP_ID в серверных переменных окружения);
 - Arbeitnow;
 - Remote OK;
 - We Work Remotely;
