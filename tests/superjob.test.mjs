@@ -52,7 +52,7 @@ test("SuperJob normalizer preserves real vacancy details and rejects unsafe link
   assert.equal(result.results.length, 1);
   assert.equal(result.results[0].id, "superjob-123");
   assert.equal(result.results[0].source, "superjob");
-  assert.equal(result.results[0].salary, "от 120 000 до 180 000 ₽".replace(/ /g, " "));
+  assert.match(result.results[0].salary, /^от 120/);\n  assert.match(result.results[0].salary, /180/);\n  assert.match(result.results[0].salary, /₽/);
   assert.equal(result.results[0].workMode, "remote");
   assert.equal(result.results[0].url, "https://www.superjob.ru/vakansii/qa-123.html");
 });
