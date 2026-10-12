@@ -39,7 +39,9 @@
 - Зарплата.ру: https://www.zarplata.ru/
 - GeekJob: https://geekjob.ru/
 - Finder.work: https://finder.work/
-- Getmatch: https://getmatch.ru/\n- Jooble: https://jooble.org/api/about ; официальное заявление о работе в России/Беларуси: https://jooble.org/insights/jooble-brand-misused-in-russia-and-belarus/\n- Adzuna API: https://developer.adzuna.com/overview
+- Getmatch: https://getmatch.ru/
+- Jooble: https://jooble.org/api/about ; официальное заявление о работе в России/Беларуси: https://jooble.org/insights/jooble-brand-misused-in-russia-and-belarus/
+- Adzuna API: https://developer.adzuna.com/overview
 
 ## Правила добавления новых источников
 
