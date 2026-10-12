@@ -7,7 +7,7 @@ import { getSourceCapability } from "./sourceCapabilities.ts";
 import { requireArrayField, requireHhPayload } from "./searchPayload.js";
 
 export type AtsJobSource = "greenhouse" | "lever" | "ashby" | "smartrecruiters" | "recruitee" | "workable";
-export type FeedJobSource = "trudvsem" | "remoteok" | "weworkremotely" | "remotive" | "jobicy" | "remocate";
+export type FeedJobSource = "trudvsem" | "remoteok" | "weworkremotely" | "remotive" | "jobicy" | "remocate" | "superjob";
 export type RealJobSource = FeedJobSource | "hh" | "arbeitnow" | "telegram" | AtsJobSource;
 export type SearchSource = RealJobSource | "ats";
 
@@ -45,7 +45,7 @@ interface AdapterResult { results: SearchResult[]; nextPage: number | null; refr
 const REQUEST_TIMEOUT_MS = 35_000;
 const CAPABILITY_TIMEOUT_MS = 1_500;
 const ATS_SOURCES = new Set<AtsJobSource>(["greenhouse", "lever", "ashby", "smartrecruiters", "recruitee", "workable"]);
-const BACKEND_REQUIRED_SOURCES = new Set<SearchSource>(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "ats", "telegram"]);
+const BACKEND_REQUIRED_SOURCES = new Set<SearchSource>(["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "superjob", "ats", "telegram"]);
 let backendCapability: Promise<boolean> | null = null;
 
 function sortResults(results: SearchResult[], request: SearchRequest): SearchResult[] {
@@ -112,7 +112,7 @@ function canLoadNextPage(source: SearchSource): boolean {
   return getSourceCapability(source)?.supportsPagination === true;
 }
 
-const adapters: Record<SearchSource, (request: SearchRequest) => Promise<AdapterResult>> = { trudvsem: (request) => searchBffFeed(request, "trudvsem"), remoteok: (request) => searchBffFeed(request, "remoteok"), weworkremotely: (request) => searchBffFeed(request, "weworkremotely"), remotive: (request) => searchBffFeed(request, "remotive"), jobicy: (request) => searchBffFeed(request, "jobicy"), remocate: (request) => searchBffFeed(request, "remocate"), telegram: searchTelegram, ats: searchAts, hh: searchHh, arbeitnow: searchArbeitnow, greenhouse: searchAts, lever: searchAts, ashby: searchAts, smartrecruiters: searchAts, recruitee: searchAts, workable: searchAts };
+const adapters: Record<SearchSource, (request: SearchRequest) => Promise<AdapterResult>> = { trudvsem: (request) => searchBffFeed(request, "trudvsem"), remoteok: (request) => searchBffFeed(request, "remoteok"), weworkremotely: (request) => searchBffFeed(request, "weworkremotely"), remotive: (request) => searchBffFeed(request, "remotive"), jobicy: (request) => searchBffFeed(request, "jobicy"), remocate: (request) => searchBffFeed(request, "remocate"), superjob: (request) => searchBffFeed(request, "superjob"), telegram: searchTelegram, ats: searchAts, hh: searchHh, arbeitnow: searchArbeitnow, greenhouse: searchAts, lever: searchAts, ashby: searchAts, smartrecruiters: searchAts, recruitee: searchAts, workable: searchAts };
 export function mergeSearchResults(...groups: SearchResult[][]): SearchResult[] { return mergeContractResults(...groups) as SearchResult[]; }
 async function sourcesForRequest(request: SearchRequest): Promise<{ sources: SearchSource[]; backendAvailable: boolean }> { const backendAvailable = await detectBackend(); const requested = request.sources.filter((source) => backendAvailable || !BACKEND_REQUIRED_SOURCES.has(source)); const hasPerSourcePagination = Object.entries(request.pages || {}).some(([source, page]) => canLoadNextPage(source as SearchSource) && Number.isInteger(page) && (page as number) > 0);
   if ((request.page ?? 0) > 0 || hasPerSourcePagination) {
