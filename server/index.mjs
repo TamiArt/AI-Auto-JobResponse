@@ -20,6 +20,7 @@ import { UPSTREAM_TIMEOUT_MS } from "./runtimeConfig.mjs";
 import { createRuntimeStatus, withSecurityHeaders } from "./httpPolicy.mjs";
 import { filterTelegramResults, normalizeTelegramHtml, validateTelegramRequest } from "./telegramPublic.mjs";
 import { normalizeRemocateHtml } from "./remocate.mjs";
+import { buildSuperJobUrl, normalizeSuperJobPayload, validateSuperJobRequest } from "./superjob.mjs";
 
 const ROOT = resolve(fileURLToPath(new URL("../", import.meta.url)));
 const DIST_DIR = join(ROOT, "dist");
@@ -255,6 +256,26 @@ async function handleSnapshotFeed(response, url, loader) {
   catch (error) { const timedOut = error instanceof DOMException && error.name === "AbortError"; sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" }); }
 }
 
+async function handleSuperJob(response, url) {
+  const validation = validateSuperJobRequest(url.searchParams);
+  if (!validation.ok) return sendJson(response, validation.status, { error: validation.error });
+  const appId = String(process.env.SUPERJOB_APP_ID || "").trim();
+  if (!appId) return sendJson(response, 503, { error: "source_not_configured", source: "superjob", requiredEnv: "SUPERJOB_APP_ID" });
+  try {
+    const upstream = await fetchResponseWithTimeout(buildSuperJobUrl(validation), { headers: { Accept: "application/json", "X-Api-App-Id": appId } });
+    if (upstream.status === 429) return sendJson(response, 503, { error: "rate_limited", source: "superjob" });
+    if (upstream.status === 401 || upstream.status === 403) return sendJson(response, 503, { error: "access_restricted", source: "superjob" });
+    if (!upstream.ok) return sendJson(response, 502, { error: "upstream_error", source: "superjob" });
+    let payload;
+    try { payload = await upstream.json(); } catch { return sendJson(response, 502, { error: "invalid_response", source: "superjob" }); }
+    const now = Date.now();
+    return sendJson(response, 200, { ...normalizeSuperJobPayload(payload), meta: { lastUpdated: now, nextRefresh: now + 300_000, refreshIntervalMs: 300_000, cached: false, stale: false } });
+  } catch (error) {
+    const timedOut = error instanceof DOMException && error.name === "AbortError";
+    return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
+  }
+}
+
 async function handleTrudvsemView(response, url) {
   const validation = validateTrudvsemViewRequest(url.searchParams.get("company"), url.searchParams.get("id"));
   if (!validation.ok) return sendHtml(response, validation.status, "Некорректная ссылка вакансии");
@@ -268,9 +289,10 @@ async function handleTrudvsemView(response, url) {
 
 async function handleApi(request, response, url) {
   if (request.method !== "GET") return sendJson(response, 405, { error: "method_not_allowed" });
-  if (url.pathname === "/api/health") return sendJson(response, 200, { ok: true, sources: ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "ats", "telegram"] });
+  if (url.pathname === "/api/health") return sendJson(response, 200, { ok: true, sources: ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "superjob", "ats", "telegram"] });
   if (url.pathname === "/api/status") return sendJson(response, 200, createRuntimeStatus({ feedCache, atsCache, upstreamTimeoutMs: UPSTREAM_TIMEOUT_MS, atsConcurrency: ATS_CONCURRENCY }));
   if (url.pathname === "/api/jobs/trudvsem-view") return handleTrudvsemView(response, url);
+  if (url.pathname === "/api/jobs/superjob" || (url.pathname === "/api/jobs" && url.searchParams.get("source") === "superjob")) return handleSuperJob(response, url);
   const source = url.pathname === "/api/jobs" ? url.searchParams.get("source") : null;
   if (url.pathname === "/api/jobs/hh" || source === "hh") {
     try { const result = await fetchHh(url); return sendJson(response, result.status, result.body); }
