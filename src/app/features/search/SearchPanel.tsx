@@ -8,7 +8,7 @@ import { mergeSearchResults, searchJobs, type RealJobSource, type SearchRequest,
 import { addSearchHistory, clearSearchHistory, loadFavorites, loadSearchHistory, persistFavorites, type SearchHistoryEntry } from "./searchStorage";
 import { capabilityLabel, getSourceCapability } from "./sourceCapabilities";
 
-const USER_SOURCES: RealJobSource[] = ["hh", "arbeitnow", "remocate"];
+const USER_SOURCES: RealJobSource[] = ["hh", "arbeitnow", "remocate", "superjob"];
 const LIMITED_REFRESH_SOURCES: RealJobSource[] = ["jobicy", "remotive"];
 const EXTERNAL_SOURCES: JobSource[] = ["habr", "geekjob", "finder", "djinni", "remoteco", "linkedin", "indeed", "glassdoor", "wellfound", "behance", "dribbble", "artstation"];
 const SALARY_CURRENCIES: Array<{ value: SalaryCurrency; label: string }> = [{ value: "RUB", label: "₽ RUB" }, { value: "USD", label: "$ USD" }, { value: "EUR", label: "€ EUR" }, { value: "GBP", label: "£ GBP" }];
