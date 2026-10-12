@@ -2,7 +2,7 @@ export const SUPERJOB_API = "https://api.superjob.ru/2.0/vacancies/";
 const PAGE_SIZE = 100;
 
 function text(value) {
-  return String(value ?? "").replace(/<[^>]*>/g, " ").replace(/\\s+/g, " ").trim();
+  return String(value ?? "").replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
 }
 
 function safeUrl(value) {
@@ -11,7 +11,7 @@ function safeUrl(value) {
   try {
     const url = new URL(raw);
     if (url.protocol !== "https:" && url.protocol !== "http:") return "";
-    if (!/(^|\\.)superjob\\.ru$/i.test(url.hostname)) return "";
+    if (!/(^|\.)superjob\.ru$/i.test(url.hostname)) return "";
     return url.toString();
   } catch {
     return "";
@@ -44,7 +44,7 @@ export function validateSuperJobRequest(searchParams) {
   const page = Math.max(0, Number.parseInt(String(searchParams.get("page") || "0"), 10) || 0);
   const salaryFrom = text(searchParams.get("salary"));
   if (!query) return { ok: false, status: 400, error: "query_required" };
-  if (query.length > 160 || page > 1000 || (salaryFrom && (!/^\\d+$/.test(salaryFrom) || Number(salaryFrom) > 100_000_000))) {
+  if (query.length > 160 || page > 1000 || (salaryFrom && (!/^\d+$/.test(salaryFrom) || Number(salaryFrom) > 100_000_000))) {
     return { ok: false, status: 400, error: "invalid_parameters" };
   }
   return { ok: true, query, page, salaryFrom };
