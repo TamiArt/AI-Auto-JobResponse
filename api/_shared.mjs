@@ -23,7 +23,6 @@ const API_URLS = {
   jobicy: "https://jobicy.com/api/v2/remote-jobs?count=100",
   arbeitnow: "https://www.arbeitnow.com/api/job-board-api",
   remocate: "https://www.remocate.app/",
-  superjob: "https://api.superjob.ru/2.0/vacancies/",
 };
 
 export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "superjob", "ats", "telegram"];
