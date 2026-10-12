@@ -33,7 +33,7 @@ npm run check:full
 
 - Работа России;
 - HH.ru;
-- SuperJob (официальный API; требуется SUPERJOB_APP_ID в серверных переменных окружения);
+- SuperJob (официальный API; требуется `SUPERJOB_APP_ID` в серверных переменных окружения; до настройки не включён в стандартный поиск).
 - Arbeitnow;
 - Remote OK;
 - We Work Remotely;
@@ -48,6 +48,8 @@ npm run check:full
 - Workable.
 
 ATS registry содержит 34 публичных employer boards и расширяется данными в `server/atsRegistry.mjs`, а не новым React-кодом.
+
+Подробный реестр российских площадок, условия доступа и следующие шаги: [`docs/RUSSIAN_JOB_SOURCES.md`](docs/RUSSIAN_JOB_SOURCES.md).
 
 ## Vercel
 
