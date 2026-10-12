@@ -30,10 +30,10 @@ function salaryLabel(item) {
 }
 
 function workMode(item) {
-  const value = Number(item?.place_of_work);
+  const value = Number(item?.place_of_work?.id ?? item?.place_of_work);
   if (value === 2) return "remote";
   if (value === 1) return "onsite";
-  const signal = text(item?.profession + " " + item?.work).toLowerCase();
+  const signal = text(item?.profession + " " + item?.work + " " + item?.place_of_work?.title).toLowerCase();
   if (/удален|remote/.test(signal)) return "remote";
   if (/гибрид|hybrid/.test(signal)) return "hybrid";
   return undefined;
