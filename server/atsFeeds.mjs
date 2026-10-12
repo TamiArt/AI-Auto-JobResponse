@@ -122,6 +122,8 @@ export function normalizeRecruitee(payload, employer) {
       published: item.published_at || item.created_at, url: item.careers_url || item.careers_apply_url || item.url,
       tags: [item.department, item.department?.name, item.employment_type, item.remote ? "Remote" : ""],
       description: item.description,
+      workplace: item.remote ? "Remote" : "",
+      employment: item.employment_type,
     });
   }).filter(Boolean);
 }

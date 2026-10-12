@@ -103,6 +103,7 @@ export function normalizeSalary(salary) {
 }
 
 export function inferWorkMode(item) {
+  if (item.workMode && item.workMode !== "any" && item.workMode !== "unknown") return item.workMode;
   const text = normalizeText([item.location, item.title, item.description, ...(item.tags || [])].join(" "));
   if (HYBRID_SIGNALS.test(text)) return "hybrid";
   if (WORK_MODE_SIGNALS.test(text)) return "remote";
@@ -125,6 +126,7 @@ export function matchesLocation(request, item) {
 }
 
 export function inferEmploymentType(item) {
+  if (item.employmentType && item.employmentType !== "any" && item.employmentType !== "unknown") return item.employmentType;
   const text = normalizeText([item.title, item.description, ...(item.tags || [])].join(" "));
   if (EMPLOYMENT_SIGNALS.internship.test(text)) return "internship";
   if (EMPLOYMENT_SIGNALS.partTime.test(text)) return "partTime";
