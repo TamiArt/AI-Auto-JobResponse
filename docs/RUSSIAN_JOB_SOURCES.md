@@ -4,6 +4,8 @@
 
 Этот список разделяет **реально подключённые адаптеры**, **готовые к настройке интеграции** и **источники, где сначала нужно получить разрешение**. Наличие сайта поиска или API для работодателей само по себе не означает, что JOBOS вправе получать общий каталог вакансий.
 
+Общие правила для всех автоматических и внешних источников описаны в [SOURCE_USAGE_POLICY.md](./SOURCE_USAGE_POLICY.md). Этот реестр отражает интеграции российского рынка.
+
 ## Статус
 
 | Источник | Доступ | Статус JOBOS | Следующий шаг |
@@ -40,7 +42,7 @@
 - GeekJob: https://geekjob.ru/
 - Finder.work: https://finder.work/
 - Getmatch: https://getmatch.ru/
-- Jooble: https://jooble.org/api/about ; официальное заявление о работе в России/Беларуси: https://jooble.org/insights/jooble-brand-misused-in-russia-and-belarus/
+- Jooble API: https://jooble.org/api/about ; официальное заявление о работе в России/Беларуси: https://jooble.org/insights/jooble-brand-misused-in-russia-and-belarus/
 - Adzuna API: https://developer.adzuna.com/overview
 
 ## Правила добавления новых источников
