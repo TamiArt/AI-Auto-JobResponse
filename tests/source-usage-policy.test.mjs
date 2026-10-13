@@ -12,7 +12,7 @@ test("source usage policy documents the distinction between ingestion and extern
   const policy = fs.readFileSync(policyPath, "utf8");
 
   assert.match(policy, /External search links — not data integrations/);
-  assert.match(policy, /do not be described as automatically searched, imported, or aggregated/i);
+  assert.match(policy, /must not be described as automatically searched, imported, or aggregated/i);
   assert.match(policy, /Permission \/ access confirmation required/);
   assert.match(policy, /Do not bypass CAPTCHA, authentication, rate limits, paywalls, or access controls/);
 });
