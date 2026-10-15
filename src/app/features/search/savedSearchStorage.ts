@@ -61,24 +61,6 @@ function normalizeName(name: string): string {
   return name.trim().replace(/\s+/g, " ").toLocaleLowerCase("ru-RU");
 }
 
-function requestSignature(request: SearchRequest): string {
-  return JSON.stringify({
-    query: request.query.trim().toLocaleLowerCase("ru-RU").replace(/ё/g, "е"),
-    areaId: request.areaId,
-    salaryFrom: request.salaryFrom,
-    salaryTo: request.salaryTo || "",
-    salaryCurrency: request.salaryCurrency || "RUB",
-    workMode: request.workMode || "any",
-    location: (request.location || "").trim().toLocaleLowerCase("ru-RU").replace(/ё/g, "е"),
-    employmentType: request.employmentType || "any",
-    experience: request.experience,
-    publishedWithin: request.publishedWithin || "any",
-    sortBy: request.sortBy || "date",
-    sources: [...request.sources].sort(),
-    telegramChannels: [...(request.telegramChannels || [])].sort(),
-  });
-}
-
 export function loadSavedSearches(): SavedSearch[] {
   return readStorage()
     .filter(isSavedSearch)
