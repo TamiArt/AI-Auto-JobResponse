@@ -32,6 +32,19 @@
 - [ ] Оптимизировать PWA icon и статические assets.
 - [x] Добавить расширенный deployment smoke для публичного Vercel URL без расходования лимитированных upstream (`npm run test:smoke:public`, `PUBLIC_URL=...`).
 
+## HH.ru API access — future investigation
+
+HH remains an optional search adapter. The main JOBOS search must continue to work when HH denies access or is temporarily unavailable.
+
+- [ ] Register an application in the HH developer portal and review the current API access requirements.
+- [ ] Request an API token/key and any required permission from HH; do not assume registration or a token guarantees vacancy-search access.
+- [ ] Ask HH support to clarify the current 403/CAPTCHA restriction and confirm that JOBOS's multi-source vacancy search and result display comply with the API terms.
+- [ ] If user authorization is required, implement only the official OAuth flow with clear user consent; never collect HH passwords or bypass CAPTCHA/access controls.
+- [ ] Store any server-side credential only in deployment secrets (for example, `HH_ACCESS_TOKEN`); never expose it to browser code or commit it to the repository.
+- [ ] Verify token/access behavior against the official API and document the outcome before enabling any assumptions about HH availability.
+
+Until access is approved and verified, HH failures must be reported explicitly and must not be represented as a successful empty search. Users should still be able to open [the official HH vacancy search](https://hh.ru/search/vacancy).
+
 ## Telegram job channels
 
 Telegram является отдельным источником вакансий и должен объединяться с общим `SearchResult`, а не существовать отдельным поиском.
