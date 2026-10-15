@@ -32,18 +32,26 @@
 - [ ] Оптимизировать PWA icon и статические assets.
 - [x] Добавить расширенный deployment smoke для публичного Vercel URL без расходования лимитированных upstream (`npm run test:smoke:public`, `PUBLIC_URL=...`).
 
-## HH.ru API access — future investigation
+## Российские источники вакансий
 
-HH remains an optional search adapter. The main JOBOS search must continue to work when HH denies access or is temporarily unavailable.
+### SuperJob — adapter подготовлен, доступ требует регистрации приложения
+- [x] Добавить server-side adapter для официального GET /2.0/vacancies/ API и нормализацию вакансий.
+- [x] Не выдавать пустую выдачу при отсутствии ключа: вернуть source_not_configured и явно указать SUPERJOB_APP_ID.
+- [ ] Зарегистрировать приложение на официальном портале SuperJob API, получить ключ и добавить его в Vercel Environment Variables и окружение self-hosted сервера.
+- [ ] Проверить живой поиск по запросам QA Engineer, тестировщик, Junior QA; сверить формат вакансий, лимиты, условия и реальные ссылки.
+- [ ] Только после проверки включать SuperJob в автоматический первый экран; пока источник подключается при явном выборе пользователем.
 
-- [ ] Register an application in the HH developer portal and review the current API access requirements.
-- [ ] Request an API token/key and any required permission from HH; do not assume registration or a token guarantees vacancy-search access.
-- [ ] Ask HH support to clarify the current 403/CAPTCHA restriction and confirm that JOBOS's multi-source vacancy search and result display comply with the API terms.
-- [ ] If user authorization is required, implement only the official OAuth flow with clear user consent; never collect HH passwords or bypass CAPTCHA/access controls.
-- [ ] Store any server-side credential only in deployment secrets (for example, `HH_ACCESS_TOKEN`); never expose it to browser code or commit it to the repository.
-- [ ] Verify token/access behavior against the official API and document the outcome before enabling any assumptions about HH availability.
+### Источники, требующие разрешения или подтверждения доступа
+- [ ] Авито Работа — изучить официальный API и запросить подтверждение, что GET /job/v2/vacancies можно использовать для поиска по общему каталогу в стороннем агрегаторе. Наличие метода в документации не доказывает наличие соответствующих прав или бесплатного доступа. Не использовать парсинг сайта или обход ограничений.
+- [ ] Хабр Карьера — зарегистрировать приложение и запросить активацию; проверить, разрешает ли договор отображать вакансии в агрегаторе JOBOS. До активации не подключать.
+- [ ] Работа.ру / Зарплата.ру / GeekJob / Finder.work / Getmatch — найти официальный открытый API/feed для поиска соискателем или получить письменное разрешение. Не считать внешнюю страницу поиска API.
+- [ ] Другие российские IT-компании — расширять ATS registry только после проверки официального публичного career endpoint и фактических вакансий.
 
-Until access is approved and verified, HH failures must be reported explicitly and must not be represented as a successful empty search. Users should still be able to open [the official HH vacancy search](https://hh.ru/search/vacancy).
+Официальные точки проверки:
+- Работа России Open Data API: https://trudvsem.ru/opendata/api — уже интегрирована.
+- SuperJob API: https://api.superjob.ru/ — adapter ожидает ключ SUPERJOB_APP_ID.
+- Авито для разработчиков: https://developers.avito.ru/ ; условия: https://www.avito.ru/legal/pro_tools/public-api.
+- Хабр Карьера API: https://career.habr.com/info/api ; правила: https://career.habr.com/info/legal/api_rules.
 
 ## Telegram job channels
 

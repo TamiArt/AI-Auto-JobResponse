@@ -13,6 +13,7 @@ import { buildAtsUrl, filterAtsResults, normalizeAtsPayload } from "../server/at
 import { ATS_CONCURRENCY, ATS_EMPLOYERS } from "../server/atsRegistry.mjs";
 import { UPSTREAM_TIMEOUT_MS } from "../server/runtimeConfig.mjs";
 import { normalizeRemocateHtml } from "../server/remocate.mjs";
+import { buildSuperJobUrl, normalizeSuperJobPayload, validateSuperJobRequest } from "../server/superjob.mjs";
 
 const API_URLS = {
   trudvsem: "https://opendata.trudvsem.ru/api/v1/vacancies",
@@ -24,7 +25,7 @@ const API_URLS = {
   remocate: "https://www.remocate.app/",
 };
 
-export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "ats", "telegram"];
+export const SOURCE_NAMES = ["hh", "trudvsem", "remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "remocate", "superjob", "ats", "telegram"];
 export const SNAPSHOT_SOURCES = ["remoteok", "weworkremotely", "remotive", "jobicy", "arbeitnow", "ats"];
 const SNAPSHOT_SOURCE_SET = new Set(SNAPSHOT_SOURCES);
 export const CACHE_SECONDS = {
@@ -37,6 +38,7 @@ export const CACHE_SECONDS = {
   remotive: 21600,
   arbeitnow: 1800,
   remocate: 900,
+  superjob: 300,
 };
 
 function applyHeaders(response) {
@@ -126,6 +128,23 @@ async function loadPublicSnapshot(source) {
   return { results: filterPublicFeedResults(jobs, ""), meta: feedMeta(source) };
 }
 
+async function loadSuperJob(url) {
+  const validation = validateSuperJobRequest(url.searchParams);
+  if (!validation.ok) return { status: validation.status, body: { error: validation.error } };
+  const appId = String(process.env.SUPERJOB_APP_ID || "").trim();
+  if (!appId) return { status: 503, body: { error: "source_not_configured", source: "superjob", requiredEnv: "SUPERJOB_APP_ID" } };
+  const upstream = await fetchResponseWithTimeout(buildSuperJobUrl(validation), {
+    headers: { Accept: "application/json", "X-Api-App-Id": appId },
+  });
+  if (upstream.status === 429) return { status: 503, body: { error: "rate_limited", source: "superjob" } };
+  if (upstream.status === 401 || upstream.status === 403) return { status: 503, body: { error: "access_restricted", source: "superjob" } };
+  if (!upstream.ok) return { status: 502, body: { error: "upstream_error", source: "superjob" } };
+  let payload;
+  try { payload = await upstream.json(); }
+  catch { return { status: 502, body: { error: "invalid_response", source: "superjob" } }; }
+  return { status: 200, body: { ...normalizeSuperJobPayload(payload), meta: feedMeta("superjob") } };
+}
+
 async function loadRemocate(url) {
   const query = String(url.searchParams.get("q") || "").trim();
   if (!query) return { status: 400, body: { error: "query_required" } };
@@ -171,6 +190,10 @@ export async function handleSource(source, request, response) {
     if (source === "hh") {
       const result = await loadHh(url);
       return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.hh : 0);
+    }
+    if (source === "superjob") {
+      const result = await loadSuperJob(url);
+      return sendJson(response, result.status, result.body, result.status === 200 ? CACHE_SECONDS.superjob : 0);
     }
     if (source === "remocate") {
       const result = await loadRemocate(url);

@@ -182,3 +182,76 @@ test("Arbeitnow snapshot endpoint returns normalized source data", async () => {
     globalThis.fetch = originalFetch;
   }
 });
+
+
+test("SuperJob reports missing server configuration without making an upstream request", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalAppId = process.env.SUPERJOB_APP_ID;
+  delete process.env.SUPERJOB_APP_ID;
+  let fetchCalls = 0;
+  globalThis.fetch = async () => { fetchCalls += 1; throw new Error("must not fetch without app id"); };
+  try {
+    const response = createResponse();
+    await handleSource("superjob", {
+      method: "GET",
+      headers: { host: "localhost" },
+      url: "/api/jobs/superjob?q=QA",
+    }, response);
+    assert.equal(response.statusCode, 503);
+    assert.deepEqual(JSON.parse(response.body), {
+      error: "source_not_configured",
+      source: "superjob",
+      requiredEnv: "SUPERJOB_APP_ID",
+    });
+    assert.equal(fetchCalls, 0);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalAppId === undefined) delete process.env.SUPERJOB_APP_ID;
+    else process.env.SUPERJOB_APP_ID = originalAppId;
+  }
+});
+
+test("SuperJob uses the server-side app id and returns normalized vacancy results", async () => {
+  const originalFetch = globalThis.fetch;
+  const originalAppId = process.env.SUPERJOB_APP_ID;
+  process.env.SUPERJOB_APP_ID = "test-app-id";
+  let upstreamUrl = "";
+  let upstreamHeaders;
+  globalThis.fetch = async (url, init = {}) => {
+    upstreamUrl = String(url);
+    upstreamHeaders = init.headers;
+    return new Response(JSON.stringify({
+      total: 1,
+      more: false,
+      objects: [{
+        id: 123,
+        profession: "QA Engineer",
+        firm_name: "Example",
+        link: "https://www.superjob.ru/vakansii/qa-123.html",
+        date_published: 1790000000,
+        town: { title: "Москва" },
+      }],
+    }), { status: 200, headers: { "Content-Type": "application/json" } });
+  };
+  try {
+    const response = createResponse();
+    await handleSource("superjob", {
+      method: "GET",
+      headers: { host: "localhost" },
+      url: "/api/jobs/superjob?q=QA",
+    }, response);
+    const body = JSON.parse(response.body);
+    assert.equal(response.statusCode, 200);
+    assert.match(upstreamUrl, /^https:\/\/api\.superjob\.ru\/2\.0\/vacancies\//);
+    assert.equal(new URL(upstreamUrl).searchParams.get("keyword"), "QA");
+    assert.equal(upstreamHeaders["X-Api-App-Id"], "test-app-id");
+    assert.equal(body.results.length, 1);
+    assert.equal(body.results[0].source, "superjob");
+    assert.equal(body.results[0].title, "QA Engineer");
+    assert.equal(response.getHeader("vercel-cdn-cache-control").includes("s-maxage=300"), true);
+  } finally {
+    globalThis.fetch = originalFetch;
+    if (originalAppId === undefined) delete process.env.SUPERJOB_APP_ID;
+    else process.env.SUPERJOB_APP_ID = originalAppId;
+  }
+});

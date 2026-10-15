@@ -8,9 +8,9 @@ import { mergeSearchResults, searchJobs, type RealJobSource, type SearchRequest,
 import { addSearchHistory, clearSearchHistory, loadFavorites, loadSearchHistory, persistFavorites, type SearchHistoryEntry } from "./searchStorage";
 import { capabilityLabel, getSourceCapability } from "./sourceCapabilities";
 
-const USER_SOURCES: RealJobSource[] = ["hh", "arbeitnow", "remocate"];
+const USER_SOURCES: RealJobSource[] = ["hh", "arbeitnow", "remocate", "superjob"];
 const LIMITED_REFRESH_SOURCES: RealJobSource[] = ["jobicy", "remotive"];
-const EXTERNAL_SOURCES: JobSource[] = ["habr", "geekjob", "finder", "djinni", "remoteco", "linkedin", "indeed", "glassdoor", "wellfound", "behance", "dribbble", "artstation"];
+const EXTERNAL_SOURCES: JobSource[] = ["avito", "rabota", "zarplata", "habr", "geekjob", "finder", "djinni", "remoteco", "linkedin", "indeed", "glassdoor", "wellfound", "behance", "dribbble", "artstation"];
 const SALARY_CURRENCIES: Array<{ value: SalaryCurrency; label: string }> = [{ value: "RUB", label: "₽ RUB" }, { value: "USD", label: "$ USD" }, { value: "EUR", label: "€ EUR" }, { value: "GBP", label: "£ GBP" }];
 
 const WORK_MODE_OPTIONS: Array<{ value: WorkModeFilter; label: string }> = [{ value: "any", label: "Любой формат" }, { value: "remote", label: "Удалённо" }, { value: "hybrid", label: "Гибрид" }, { value: "onsite", label: "Офис" }];
@@ -44,7 +44,7 @@ function SearchResultCard({ result, favorite, onToggleFavorite, onOpenApplicatio
 
 export function SearchPanel({ config, onOpenApplication }: { config: Config; onOpenApplication: (job: SearchResult) => void }) {
   const [query, setQuery] = useState(config.jobTitle || ""); const [workMode, setWorkMode] = useState<WorkModeFilter>(config.workMode || "any"); const [location, setLocation] = useState(config.location || ""); const [employmentType, setEmploymentType] = useState<EmploymentTypeFilter>(config.employmentType || "any"); const [salaryFrom, setSalaryFrom] = useState(config.salaryFrom || ""); const [salaryTo, setSalaryTo] = useState(config.salaryTo || ""); const [salaryCurrency, setSalaryCurrency] = useState<SalaryCurrency>(config.salaryCurrency || "RUB"); const [areaId, setAreaId] = useState(config.areaId || "1"); const [experience, setExperience] = useState<ExperienceFilter>(config.experience || "any"); const [publishedWithin, setPublishedWithin] = useState<PublishedWithinFilter>("any"); const [sortBy, setSortBy] = useState<SearchSort>("date");
-  const [activeSources, setActiveSources] = useState<Set<RealJobSource>>(new Set(USER_SOURCES)); const [response, setResponse] = useState<SearchResponse>({ results: [], errors: {}, attemptedSources: [], nextPages: {} }); const [lastRequest, setLastRequest] = useState<SearchRequest | null>(null);
+  const [activeSources, setActiveSources] = useState<Set<RealJobSource>>(new Set(USER_SOURCES.filter((source) => source !== "superjob")) ); const [response, setResponse] = useState<SearchResponse>({ results: [], errors: {}, attemptedSources: [], nextPages: {} }); const [lastRequest, setLastRequest] = useState<SearchRequest | null>(null);
   const [favorites, setFavorites] = useState<SearchResult[]>(loadFavorites); const [history, setHistory] = useState<SearchHistoryEntry[]>(loadSearchHistory); const [showFavorites, setShowFavorites] = useState(false); const [resultSourceFilter, setResultSourceFilter] = useState<"all" | RealJobSource>("all"); const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [searched, setSearched] = useState(false);
   const favoriteIds = new Set(favorites.map((item) => item.id));
   const toggleSource = (source: RealJobSource) => setActiveSources((current) => { const next = new Set(current); if (next.has(source)) { if (next.size > 1) next.delete(source); } else next.add(source); return next; });
