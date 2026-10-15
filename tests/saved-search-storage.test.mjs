@@ -59,6 +59,18 @@ test("saving the same name updates it without creating a duplicate", () => {
   assert.notEqual(second[0].updatedAt, first[0].updatedAt);
 });
 
+test("different presets saved at the same timestamp receive unique ids", () => {
+  globalThis.localStorage = createStorage();
+  clearSavedSearches();
+  const now = new Date("2026-10-15T10:00:00.000Z");
+
+  const first = saveSearch({ name: "QA", request: request() }, now);
+  const second = saveSearch({ name: "Python", request: request({ query: "Python QA" }) }, now);
+
+  assert.equal(second.length, 2);
+  assert.notEqual(second[0].id, second[1].id);
+});
+
 test("empty names, queries, and source selections are not saved", () => {
   globalThis.localStorage = createStorage();
   clearSavedSearches();
