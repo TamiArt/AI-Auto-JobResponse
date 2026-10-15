@@ -85,8 +85,17 @@ export function saveSearch(input: SavedSearchInput, now = new Date()): SavedSear
   const current = loadSavedSearches();
   const existing = current.find((item) => normalizeName(item.name) === normalizeName(name));
   const timestamp = now.toISOString();
+  let id = existing?.id || `saved-search-${now.getTime()}`;
+  if (!existing) {
+    const baseId = id;
+    let suffix = 2;
+    while (current.some((item) => item.id === id)) {
+      id = `${baseId}-${suffix}`;
+      suffix += 1;
+    }
+  }
   const nextItem: SavedSearch = {
-    id: existing?.id || `saved-search-${now.getTime()}`,
+    id,
     name,
     request: {
       ...input.request,
