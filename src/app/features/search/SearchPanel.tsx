@@ -62,8 +62,13 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
   const repeatSearch = (entry: SearchHistoryEntry) => { setQuery(entry.query); setAreaId(entry.areaId); setSalaryFrom(entry.salaryFrom); setSalaryTo(entry.salaryTo || ""); setSalaryCurrency(entry.salaryCurrency || "RUB"); setWorkMode(entry.workMode || "any"); setLocation(entry.location || ""); setEmploymentType(entry.employmentType || "any"); setExperience(entry.experience || "any"); setActiveSources(new Set(entry.sources)); void runSearch({ searchQuery: entry.query, searchAreaId: entry.areaId, searchSalaryFrom: entry.salaryFrom, searchSalaryTo: entry.salaryTo || "", searchSalaryCurrency: entry.salaryCurrency || "RUB", searchWorkMode: entry.workMode || "any", searchLocation: entry.location || "", searchEmploymentType: entry.employmentType || "any", searchExperience: entry.experience || "any", searchPublishedWithin: "any", searchSortBy: "date", sources: entry.sources }); };
   const clearHistory = () => { clearSearchHistory(); setHistory([]); };
   const handleSaveSearch = () => {
-    if (!lastRequest || !savedSearchName.trim()) return;
-    setSavedSearches(saveSearch({ name: savedSearchName, request: lastRequest }));
+    if (!query.trim() || !savedSearchName.trim() || activeSources.size === 0) return;
+    const request: SearchRequest = {
+      query: query.trim(), areaId, salaryFrom, salaryTo, salaryCurrency, workMode, location,
+      employmentType, experience, publishedWithin, sortBy, telegramChannels: config.telegramChannels,
+      sources: Array.from(activeSources), page: 0,
+    };
+    setSavedSearches(saveSearch({ name: savedSearchName, request }));
     setSavedSearchName("");
   };
   const applySavedSearch = (entry: SavedSearch) => {
@@ -122,7 +127,7 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
       <div className="space-y-1.5"><span className="text-[10px] font-mono uppercase text-muted-foreground">Основные источники</span><div className="flex gap-2 flex-wrap">{USER_SOURCES.map((source) => { const meta = JOB_SOURCES[source]; const selected = activeSources.has(source); return <button key={source} type="button" onClick={() => toggleSource(source)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono border ${selected ? `${meta.color} ${meta.bg} ${meta.border}` : "text-muted-foreground border-border"}`}>{selected && <Check size={11} />}{meta.label}</button>; })}</div><p className="text-[10px] font-mono text-muted-foreground">Feeds, ATS и {config.telegramChannels.length ? `${config.telegramChannels.length} Telegram-канал(а/ов)` : "Telegram после добавления каналов в настройках"} подключаются автоматически.</p></div></div>
     </section>
 
-    {(history.length > 0 || favorites.length > 0 || savedSearches.length > 0 || lastRequest) && <section className="rounded-[1.25rem] border border-border bg-card p-4 sm:p-5 space-y-3 shadow-[var(--shadow-soft)]">
+    {(history.length > 0 || favorites.length > 0 || savedSearches.length > 0 || query.trim()) && <section className="rounded-[1.25rem] border border-border bg-card p-4 sm:p-5 space-y-3 shadow-[var(--shadow-soft)]">
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex gap-2 flex-wrap">
           <button type="button" onClick={() => setShowFavorites(false)} className={`px-3 py-1.5 rounded-lg border text-xs font-mono ${!showFavorites ? "text-[var(--neon-violet)]" : "text-muted-foreground"}`}>Последние запросы</button>
@@ -130,7 +135,7 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
         </div>
         {!showFavorites && history.length > 0 && <button type="button" onClick={clearHistory} className="text-xs font-mono text-muted-foreground hover:text-red-400"><Trash2 size={11} className="inline mr-1" />Очистить историю</button>}
       </div>
-      {!showFavorites && lastRequest && <div className="flex flex-col sm:flex-row gap-2">
+      {!showFavorites && query.trim() && <div className="flex flex-col sm:flex-row gap-2">
         <input value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} maxLength={80} placeholder="Название сохранённого поиска" aria-label="Название сохранённого поиска" className="flex-1 px-3 py-2 rounded-lg border border-border bg-input-background text-xs font-mono" />
         <button type="button" onClick={handleSaveSearch} disabled={!savedSearchName.trim()} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--neon-violet)]/40 text-xs font-mono text-[var(--neon-violet)] disabled:opacity-40"><Bookmark size={12} />Сохранить фильтры</button>
       </div>}
