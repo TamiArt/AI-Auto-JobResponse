@@ -128,7 +128,7 @@ test("HH is proxied server-side with required client identity headers", async ()
   }
 });
 
-test("HH upstream 403 is converted to graceful JSON instead of browser network failure", async () => {
+test("HH upstream 403 is exposed as an explicit access restriction", async () => {
   const originalFetch = globalThis.fetch;
   globalThis.fetch = async () => new Response("Forbidden", { status: 403 });
   try {
@@ -138,8 +138,10 @@ test("HH upstream 403 is converted to graceful JSON instead of browser network f
       headers: { host: "localhost" },
       url: "/api/jobs/hh?q=QA&area=1&page=0",
     }, response);
-    assert.equal(response.statusCode, 200);
-    assert.equal(JSON.parse(response.body).unavailable, "captcha_or_access_restriction");
+    assert.equal(response.statusCode, 503);
+    const body = JSON.parse(response.body);
+    assert.equal(body.sourceStatus, "access_restricted");
+    assert.equal(body.items, undefined);
   } finally {
     globalThis.fetch = originalFetch;
   }
