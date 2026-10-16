@@ -53,6 +53,11 @@ test("multilingual role terms match equivalent English vacancy wording", () => {
   assert.equal(applySearchFilters({ ...baseRequest, query: "разработчик" }, { ...job, title: "Software Developer" }), true);
 });
 
+test("QA manager queries are not accidentally restricted to engineering titles", () => {
+  assert.equal(matchesQuery("QA Manager", "QA Manager", "Build QA strategy"), true);
+  assert.equal(matchesQuery("QA", "QA Manager", "Build QA strategy"), true);
+});
+
 test("QA engineer searches exclude frontend and staff frontend roles even when descriptions mention QA", () => {
   const request = { ...baseRequest, query: "QA-инженер" };
   const irrelevantTitles = [
