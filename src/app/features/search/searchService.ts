@@ -50,7 +50,7 @@ interface HhVacancy { id: string; name: string; alternate_url: string; published
 interface HhPayload { items: HhVacancy[]; page: number; pages: number; unavailable?: string; }
 interface BffSearchResult { id: string; title: string; company: string; salary: string; location: string; experience: string; publishedTimestamp: number; source?: string; url: string; tags: string[]; description?: string; sourceUrl?: string; viewerPath?: string; workMode?: WorkModeFilter; employmentType?: EmploymentTypeFilter; }
 interface BffFeedPayload { results?: BffSearchResult[]; meta?: SourceRefreshMeta; }
-interface AdapterResult { results: SearchResult[]; nextPage: number | null; refresh?: Partial<Record<FeedJobSource, SourceRefreshMeta>>; }
+interface AdapterResult { results: SearchResult[]; nextPage: number | null; refresh?: Partial<Record<FeedJobSource, SourceRefreshMeta>>; error?: string; }
 
 const REQUEST_TIMEOUT_MS = 35_000;
 const CAPABILITY_TIMEOUT_MS = 1_500;
@@ -114,7 +114,25 @@ export function normalizeBffItems(items: BffSearchResult[], source: RealJobSourc
     .filter((item) => applySearchFilters(request, item));
 }
 async function searchBffFeed(request: SearchRequest, source: FeedJobSource): Promise<AdapterResult> { const path = source === "trudvsem" ? `/api/jobs/trudvsem?${new URLSearchParams({ q: request.query, offset: "0" })}` : buildBffSourcePath(source, request.query); const payload = await fetchWithTimeout<BffFeedPayload>(path, { headers: { Accept: "application/json" } }); const results = requireArrayField(payload, "results").map((item) => ({ ...item, url: source === "trudvsem" && item.viewerPath ? new URL(item.viewerPath, window.location.origin).toString() : item.url, source, publishedAt: formatDate(item.publishedTimestamp) })).filter((item) => isSearchResult(item)).filter((item) => !isSnapshotBffSource(source) || matchesQuery(request.query, item.title, item.company, item.location, item.description, ...(item.tags || []))).map((item) => ({ ...item, normalizedSalary: normalizeSalary(item.salary), workMode: item.workMode || inferWorkMode(item), employmentType: item.employmentType || inferEmploymentType(item) })).filter((item) => applySearchFilters(request, item)); return { results, nextPage: null, refresh: payload.meta ? { [source]: payload.meta } : undefined }; }
-async function searchTelegram(request: SearchRequest): Promise<AdapterResult> { const channels = request.telegramChannels || []; if (!channels.length) return { results: [], nextPage: null }; const params = new URLSearchParams({ channels: channels.join(",") }); const payload = await fetchWithTimeout<BffFeedPayload>(`/api/jobs/telegram?${params}`, { headers: { Accept: "application/json" } }); return { results: normalizeBffItems(requireArrayField(payload, "results"), "telegram", request), nextPage: null }; }
+async function searchTelegram(request: SearchRequest): Promise<AdapterResult> {
+  const channels = Array.from(new Set((request.telegramChannels || []).map((channel) => channel.trim()).filter(Boolean)));
+  if (!channels.length) return { results: [], nextPage: null };
+  // A single channel per URL gives each public channel an independent,
+  // query-independent CDN snapshot.
+  const settled = await Promise.allSettled(channels.map(async (channel) => {
+    const params = new URLSearchParams({ channels: channel });
+    const payload = await fetchWithTimeout<BffFeedPayload>(`/api/jobs/telegram?${params}`, { headers: { Accept: "application/json" } });
+    return normalizeBffItems(requireArrayField(payload, "results"), "telegram", request);
+  }));
+  const results = settled.flatMap((entry) => entry.status === "fulfilled" ? entry.value : []);
+  const failures = settled.filter((entry) => entry.status === "rejected");
+  if (failures.length === channels.length) throw failures[0].reason;
+  return {
+    results,
+    nextPage: null,
+    error: failures.length ? `Не удалось загрузить ${failures.length} из ${channels.length} Telegram-каналов` : undefined,
+  };
+}
 async function searchAts(request: SearchRequest): Promise<AdapterResult> { const payload = await fetchWithTimeout<{ results?: BffSearchResult[] }>(buildBffSourcePath("ats", request.query), { headers: { Accept: "application/json" } }); const results = requireArrayField(payload, "results").filter((item) => ATS_SOURCES.has(item.source as AtsJobSource)).map((item) => ({ ...item, source: item.source as AtsJobSource, publishedAt: formatDate(item.publishedTimestamp), normalizedSalary: normalizeSalary(item.salary) })).filter((item) => isSearchResult(item)).map((item) => ({ ...item, workMode: item.workMode || inferWorkMode(item), employmentType: item.employmentType || inferEmploymentType(item) })).filter((item) => applySearchFilters(request, item)); return { results, nextPage: null }; }
 async function fetchHhPayload(url: string): Promise<HhPayload> {
   const controller = new AbortController();
@@ -178,4 +196,4 @@ async function sourcesForRequest(request: SearchRequest): Promise<{ sources: Sea
     };
   } const automatic = backendAvailable ? AUTOMATIC_FIRST_PAGE_SOURCES : []; const telegram = backendAvailable && request.telegramChannels?.length ? ["telegram" as const] : []; return { sources: Array.from(new Set([...automatic, ...telegram, ...requested])), backendAvailable }; }
 export async function searchJobs(request: SearchRequest): Promise<SearchResponse> {
-  const capability = await sourcesForRequest(request); const sources = capability.sources; const settled = await Promise.allSettled(sources.map(async (source) => ({ source, response: await adapters[source](request) }))); const results: SearchResult[] = []; const errors: SearchResponse["errors"] = {}; const refresh: NonNullable<SearchResponse["refresh"]> = {}; const nextPages: SearchResponse["nextPages"] = {}; settled.forEach((entry, index) => { const source = sources[index]; if (entry.status === "fulfilled") { results.push(...entry.value.response.results); Object.assign(refresh, entry.value.response.refresh || {}); if (entry.value.response.nextPage !== null && getSourceCapability(source)?.supportsPagination === true) nextPages[source] = entry.value.response.nextPage; return; } const reason = entry.reason; const hhMessage = source === "hh" ? hhSourceErrorMessage(reason) : null; errors[source] = hhMessage || formatSourceError(reason); }); return { results: sortResults(mergeSearchResults(results), request), errors, attemptedSources: sources, nextPages, refresh: Object.keys(refresh).length ? refresh : undefined, backendAvailable: capability.backendAvailable }; }
+  const capability = await sourcesForRequest(request); const sources = capability.sources; const settled = await Promise.allSettled(sources.map(async (source) => ({ source, response: await adapters[source](request) }))); const results: SearchResult[] = []; const errors: SearchResponse["errors"] = {}; const refresh: NonNullable<SearchResponse["refresh"]> = {}; const nextPages: SearchResponse["nextPages"] = {}; settled.forEach((entry, index) => { const source = sources[index]; if (entry.status === "fulfilled") { results.push(...entry.value.response.results); Object.assign(refresh, entry.value.response.refresh || {}); if (entry.value.response.error) errors[source] = entry.value.response.error; if (entry.value.response.nextPage !== null && getSourceCapability(source)?.supportsPagination === true) nextPages[source] = entry.value.response.nextPage; return; } const reason = entry.reason; const hhMessage = source === "hh" ? hhSourceErrorMessage(reason) : null; errors[source] = hhMessage || formatSourceError(reason); }); return { results: sortResults(mergeSearchResults(results), request), errors, attemptedSources: sources, nextPages, refresh: Object.keys(refresh).length ? refresh : undefined, backendAvailable: capability.backendAvailable }; }
