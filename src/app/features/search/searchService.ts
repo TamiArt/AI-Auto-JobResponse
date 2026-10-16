@@ -36,6 +36,15 @@ export interface SearchResponse {
   refresh?: Partial<Record<FeedJobSource, SourceRefreshMeta>>; backendAvailable?: boolean;
 }
 
+export type SearchEmptyState = "backend-unavailable" | "all-sources-failed" | "no-results" | null;
+
+export function getSearchEmptyState(response: SearchResponse): SearchEmptyState {
+  if (response.results.length > 0) return null;
+  if (response.backendAvailable === false && response.attemptedSources.length === 0) return "backend-unavailable";
+  if (response.attemptedSources.length > 0 && response.attemptedSources.every((source) => Boolean(response.errors[source]))) return "all-sources-failed";
+  return "no-results";
+}
+
 interface HhVacancy { id: string; name: string; alternate_url: string; published_at?: string; employer?: { name?: string }; salary?: { from?: number; to?: number; currency?: string } | null; area?: { name?: string }; experience?: { name?: string }; schedule?: { name?: string }; employment?: { name?: string }; professional_roles?: Array<{ name?: string }>; }
 interface HhPayload { items: HhVacancy[]; page: number; pages: number; unavailable?: string; }
 interface BffSearchResult { id: string; title: string; company: string; salary: string; location: string; experience: string; publishedTimestamp: number; source?: string; url: string; tags: string[]; description?: string; sourceUrl?: string; viewerPath?: string; workMode?: WorkModeFilter; employmentType?: EmploymentTypeFilter; }
