@@ -53,7 +53,11 @@ export function matchesQuery(query, ...values) {
     return false;
   }
 
-  return terms.every((term) => {
+  const remainingTerms = QA_ROLE_QUERY.test(normalizedQuery)
+    ? terms.filter((term) => !/^(?:qa|quality|assurance|инженер|инженера|инженеры|engineer|тестиров\\p{L}*|тестирован\\p{L}*|testing|tester|test|automation|автоматизац\\p{L}*)$/u.test(term))
+    : terms;
+
+  return remainingTerms.every((term) => {
     const aliases = QUERY_TERM_ALIASES.get(term) || [term];
     return aliases.some((alias) => containsQueryPhrase(haystack, alias));
   });
