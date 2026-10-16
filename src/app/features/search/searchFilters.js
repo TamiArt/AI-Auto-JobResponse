@@ -37,9 +37,22 @@ function containsQueryPhrase(haystack, phrase) {
   return (" " + normalizedHaystack + " ").includes(" " + normalizedPhrase + " ");
 }
 
+const QA_ROLE_QUERY = /(?:^|\\s)(?:qa|quality assurance|тестировщик|тестировщица|тестирование|тестирования|testing|software tester|test engineer|test automation|автоматизац тестирован|инженер по тестирован)(?:$|\\s)/;
+const QA_ROLE_TITLE = /(?:^|\\s)(?:qa|quality assurance|tester|testing|test engineer|software tester|test automation|software development engineer in test|sdet|тестировщик|тестировщиц|тестирован|автоматизац тестирован)(?:$|\\s)/;
+
 export function matchesQuery(query, ...values) {
-  const terms = normalizeQueryText(query).split(/\s+/).filter(Boolean);
+  const normalizedQuery = normalizeQueryText(query);
+  const terms = normalizedQuery.split(/\\s+/).filter(Boolean);
+  const title = values[0] || "";
   const haystack = values.filter(Boolean).join(" ");
+
+  // Role searches must match the vacancy title, not merely a passing mention in
+  // the description. Otherwise "QA engineer" also returns frontend engineers
+  // whose descriptions happen to mention QA processes.
+  if (QA_ROLE_QUERY.test(normalizedQuery) && !QA_ROLE_TITLE.test(normalizeQueryText(title))) {
+    return false;
+  }
+
   return terms.every((term) => {
     const aliases = QUERY_TERM_ALIASES.get(term) || [term];
     return aliases.some((alias) => containsQueryPhrase(haystack, alias));
