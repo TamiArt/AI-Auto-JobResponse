@@ -112,7 +112,17 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
       telegramChannels: request.telegramChannels,
     });
   };
-  const handleRemoveSavedSearch = (id: string) => setSavedSearches(removeSavedSearch(id));
+  const handleRemoveSavedSearch = (id: string) => {
+    const next = removeSavedSearch(id);
+    const remaining = loadSavedSearches();
+    if (remaining.some((entry) => entry.id === id)) {
+      setSavedSearches(remaining);
+      setSavedSearchMessage({ text: "Не удалось удалить сохранённый поиск. Хранилище браузера недоступно.", success: false });
+      return;
+    }
+    setSavedSearches(next);
+    setSavedSearchMessage({ text: "Сохранённый поиск удалён.", success: true });
+  };
   const failedSources = Object.entries(response.errors); const emptySearchState = getSearchEmptyState(response); const resultSources = Array.from(new Set(response.results.map((result) => result.source))); const visibleResults = showFavorites ? favorites : resultSourceFilter === "all" ? response.results : response.results.filter((result) => result.source === resultSourceFilter);
   const limitedRefresh = LIMITED_REFRESH_SOURCES.map((source) => [source, response.refresh?.[source]] as const).filter((entry): entry is readonly [RealJobSource, SourceRefreshMeta] => Boolean(entry[1]));
 
