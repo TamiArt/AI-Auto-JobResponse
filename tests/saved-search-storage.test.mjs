@@ -129,3 +129,23 @@ test("storage quota failures do not crash saving and are detectable on reload", 
   assert.equal(optimistic.length, 1);
   assert.deepEqual(loadSavedSearches(), []);
 });
+
+test("saved-search loading rejects invalid filter enums and unknown sources", () => {
+  const storage = createStorage();
+  globalThis.localStorage = storage;
+  const base = {
+    id: "invalid-filter",
+    name: "Broken saved search",
+    request: request(),
+    createdAt: "2026-10-15",
+    updatedAt: "2026-10-15",
+  };
+  storage.setItem("huntpulse_saved_searches_v1", JSON.stringify([
+    { ...base, request: request({ workMode: "teleport" }) },
+    { ...base, id: "invalid-experience", request: request({ experience: "a-lot" }) },
+    { ...base, id: "invalid-source", request: request({ sources: ["made-up-source"] }) },
+    { ...base, id: "valid", name: "Valid saved search" },
+  ]));
+
+  assert.deepEqual(loadSavedSearches().map((item) => item.id), ["valid"]);
+});
