@@ -18,6 +18,5 @@ Presets remain in the browser profile where they were created. They do not sync 
 
 ## Follow-up work
 
-- Add explicit feedback if browser storage is unavailable or full, rather than silently treating a save as durable.
 - Add cross-device sync only after a backend and account/privacy model are selected.
 - Add optional scheduled refresh/notifications only after source usage policies and delivery permissions are verified.
