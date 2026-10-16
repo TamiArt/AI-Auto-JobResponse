@@ -113,7 +113,7 @@ export function formatSourceError(error: unknown): string {
   if (name === "AbortError") return "Источник не ответил вовремя";
 
   const message = error instanceof Error ? error.message : "";
-  const statusMatch = message.match(/^HTTP (\\d{3})$/);
+  const statusMatch = message.match(/^HTTP (\d{3})$/);
   if (statusMatch) {
     const status = Number(statusMatch[1]);
     if (status === 429) return "Источник ограничил частоту запросов. Попробуйте позже";
