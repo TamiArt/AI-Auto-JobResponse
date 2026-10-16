@@ -73,6 +73,7 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
     const expected = next[0];
     const persisted = expected && loadSavedSearches().some((entry) => entry.id === expected.id && entry.updatedAt === expected.updatedAt);
     if (!persisted) {
+      setSavedSearches(loadSavedSearches());
       setSavedSearchMessage({ text: "Не удалось сохранить поиск в браузере. Проверьте настройки хранилища или освободите место.", success: false });
       return;
     }
