@@ -46,7 +46,7 @@ function SearchResultCard({ result, favorite, onToggleFavorite, onOpenApplicatio
 export function SearchPanel({ config, onOpenApplication }: { config: Config; onOpenApplication: (job: SearchResult) => void }) {
   const [query, setQuery] = useState(config.jobTitle || ""); const [workMode, setWorkMode] = useState<WorkModeFilter>(config.workMode || "any"); const [location, setLocation] = useState(config.location || ""); const [employmentType, setEmploymentType] = useState<EmploymentTypeFilter>(config.employmentType || "any"); const [salaryFrom, setSalaryFrom] = useState(config.salaryFrom || ""); const [salaryTo, setSalaryTo] = useState(config.salaryTo || ""); const [salaryCurrency, setSalaryCurrency] = useState<SalaryCurrency>(config.salaryCurrency || "RUB"); const [areaId, setAreaId] = useState(config.areaId || "1"); const [experience, setExperience] = useState<ExperienceFilter>(config.experience || "any"); const [publishedWithin, setPublishedWithin] = useState<PublishedWithinFilter>("any"); const [sortBy, setSortBy] = useState<SearchSort>("date");
   const [activeSources, setActiveSources] = useState<Set<RealJobSource>>(new Set(USER_SOURCES.filter((source) => source !== "superjob")) ); const [response, setResponse] = useState<SearchResponse>({ results: [], errors: {}, attemptedSources: [], nextPages: {} }); const [lastRequest, setLastRequest] = useState<SearchRequest | null>(null);
-  const [favorites, setFavorites] = useState<SearchResult[]>(loadFavorites); const [history, setHistory] = useState<SearchHistoryEntry[]>(loadSearchHistory); const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(loadSavedSearches); const [savedSearchName, setSavedSearchName] = useState(""); const [showFavorites, setShowFavorites] = useState(false); const [resultSourceFilter, setResultSourceFilter] = useState<"all" | RealJobSource>("all"); const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [searched, setSearched] = useState(false);
+  const [favorites, setFavorites] = useState<SearchResult[]>(loadFavorites); const [history, setHistory] = useState<SearchHistoryEntry[]>(loadSearchHistory); const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(loadSavedSearches); const [savedSearchName, setSavedSearchName] = useState(""); const [savedSearchMessage, setSavedSearchMessage] = useState<{ text: string; success: boolean } | null>(null); const [showFavorites, setShowFavorites] = useState(false); const [resultSourceFilter, setResultSourceFilter] = useState<"all" | RealJobSource>("all"); const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [searched, setSearched] = useState(false);
   const favoriteIds = new Set(favorites.map((item) => item.id));
   const toggleSource = (source: RealJobSource) => setActiveSources((current) => { const next = new Set(current); if (next.has(source)) { if (next.size > 1) next.delete(source); } else next.add(source); return next; });
   const toggleFavorite = (result: SearchResult) => setFavorites((current) => { const next = current.some((item) => item.id === result.id) ? current.filter((item) => item.id !== result.id) : [result, ...current]; persistFavorites(next); return next; });
@@ -68,8 +68,16 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
       employmentType, experience, publishedWithin, sortBy, telegramChannels: config.telegramChannels,
       sources: Array.from(activeSources), page: 0,
     };
-    setSavedSearches(saveSearch({ name: savedSearchName, request }));
+    const next = saveSearch({ name: savedSearchName, request });
+    setSavedSearches(next);
+    const expected = next[0];
+    const persisted = expected && loadSavedSearches().some((entry) => entry.id === expected.id && entry.updatedAt === expected.updatedAt);
+    if (!persisted) {
+      setSavedSearchMessage({ text: "Не удалось сохранить поиск в браузере. Проверьте настройки хранилища или освободите место.", success: false });
+      return;
+    }
     setSavedSearchName("");
+    setSavedSearchMessage({ text: "Поиск сохранён в этом браузере.", success: true });
   };
   const applySavedSearch = (entry: SavedSearch) => {
     const request = entry.request;
@@ -140,6 +148,7 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
         <input value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} maxLength={80} placeholder="Название сохранённого поиска" aria-label="Название сохранённого поиска" className="flex-1 px-3 py-2 rounded-lg border border-border bg-input-background text-xs font-mono" />
         <button type="button" onClick={handleSaveSearch} disabled={!savedSearchName.trim()} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--neon-violet)]/40 text-xs font-mono text-[var(--neon-violet)] disabled:opacity-40"><Bookmark size={12} />Сохранить фильтры</button>
       </div>}
+      {savedSearchMessage && <p role="status" aria-live="polite" className={`text-xs font-mono ${savedSearchMessage.success ? "text-emerald-600" : "text-red-600"}`}>{savedSearchMessage.text}</p>}
       {!showFavorites && savedSearches.length > 0 && <div className="space-y-2"><div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Сохранённые поиски · {savedSearches.length}</div>
         {savedSearches.map((entry) => <div key={entry.id} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
           <div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{entry.name}</div><div className="text-[10px] font-mono text-muted-foreground truncate">{entry.request.query} · {AREA_OPTIONS.find((area) => area.id === entry.request.areaId)?.name || "Регион"} · {entry.request.sources.length} источн.</div></div>
