@@ -94,9 +94,20 @@ async function loadHh(url) {
   const validation = validateHhRequest(url.searchParams);
   if (!validation.ok) return { status: validation.status, body: { error: validation.error } };
   const upstream = await fetchResponseWithTimeout(buildHhUrl(validation), { headers: hhHeaders() });
-  if (upstream.status === 403) return { status: 200, body: { items: [], page: validation.page, pages: 0, unavailable: "captcha_or_access_restriction" } };
-  if (!upstream.ok) throw new Error(`Upstream HTTP ${upstream.status}`);
-  return { status: 200, body: await upstream.json() };
+  if (upstream.status === 403) {
+    return { status: 503, body: { error: "hh_access_restricted", sourceStatus: "access_restricted" } };
+  }
+  if (upstream.status === 429) {
+    return { status: 429, body: { error: "hh_rate_limited", sourceStatus: "rate_limited" } };
+  }
+  if (!upstream.ok) {
+    return { status: 502, body: { error: "hh_upstream_error", sourceStatus: "upstream_error", upstreamStatus: upstream.status } };
+  }
+  try {
+    return { status: 200, body: await upstream.json() };
+  } catch {
+    return { status: 502, body: { error: "hh_invalid_response", sourceStatus: "invalid_response" } };
+  }
 }
 
 async function loadPublicSnapshot(source) {
@@ -198,6 +209,12 @@ export async function handleSource(source, request, response) {
     return sendJson(response, 200, body, CACHE_SECONDS[source]);
   } catch (error) {
     const timedOut = error instanceof DOMException && error.name === "AbortError";
+    if (source === "hh") {
+      const invalidResponse = error instanceof SyntaxError;
+      const sourceStatus = timedOut ? "timeout" : invalidResponse ? "invalid_response" : "upstream_error";
+      const code = timedOut ? "hh_timeout" : invalidResponse ? "hh_invalid_response" : "hh_upstream_unavailable";
+      return sendJson(response, timedOut ? 504 : 502, { error: code, sourceStatus });
+    }
     return sendJson(response, timedOut ? 504 : 502, { error: timedOut ? "upstream_timeout" : "upstream_unavailable" });
   }
 }
