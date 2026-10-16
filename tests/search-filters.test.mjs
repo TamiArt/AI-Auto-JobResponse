@@ -60,6 +60,8 @@ test("QA engineer searches exclude frontend and staff frontend roles even when d
     "Staff Frontend Engineer",
     "Senior Frontend Developer",
     "Staff Software Engineer",
+    "QA Manager",
+    "QA Analyst",
   ];
 
   for (const title of irrelevantTitles) {
@@ -80,6 +82,8 @@ test("QA engineer searches still accept senior QA and test automation roles", ()
     "Test Automation Engineer",
     "Software Development Engineer in Test",
     "Quality Assurance Engineer",
+    "Senior Test Engineer",
+    "Lead QA Automation Engineer",
   ]) {
     assert.equal(applySearchFilters(request, { ...job, title }), true, title);
   }
