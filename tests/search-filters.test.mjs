@@ -53,6 +53,76 @@ test("multilingual role terms match equivalent English vacancy wording", () => {
   assert.equal(applySearchFilters({ ...baseRequest, query: "разработчик" }, { ...job, title: "Software Developer" }), true);
 });
 
+test("QA manager queries are not accidentally restricted to engineering titles", () => {
+  assert.equal(matchesQuery("QA Manager", "QA Manager", "Build QA strategy"), true);
+  assert.equal(matchesQuery("QA", "QA Manager", "Build QA strategy"), true);
+});
+
+test("QA engineer searches exclude frontend and staff frontend roles even when descriptions mention QA", () => {
+  const request = { ...baseRequest, query: "QA-инженер" };
+  const irrelevantTitles = [
+    "Senior Frontend Engineer",
+    "Staff Frontend Engineer",
+    "Senior Frontend Developer",
+    "Staff Software Engineer",
+    "QA Manager",
+    "QA Analyst",
+  ];
+
+  for (const title of irrelevantTitles) {
+    assert.equal(applySearchFilters(request, {
+      ...job,
+      title,
+      description: "Work with QA engineers and quality assurance processes",
+      tags: ["QA", "Engineering"],
+    }), false, title);
+  }
+});
+
+test("QA engineer searches still accept senior QA and test automation roles", () => {
+  const request = { ...baseRequest, query: "QA-инженер" };
+  for (const title of [
+    "Senior QA Engineer",
+    "QA Automation Engineer",
+    "Test Automation Engineer",
+    "Software Development Engineer in Test",
+    "Quality Assurance Engineer",
+    "Senior Test Engineer",
+    "Lead QA Automation Engineer",
+  ]) {
+    assert.equal(applySearchFilters(request, { ...job, title }), true, title);
+  }
+});
+
+test("QA role aliases are matched by title without requiring QA keywords in the description", () => {
+  const request = { ...baseRequest, query: "QA-инженер" };
+  for (const title of [
+    "Senior QA Engineer",
+    "QA Automation Engineer",
+    "Test Automation Engineer",
+    "Software Development Engineer in Test",
+    "Quality Assurance Engineer",
+    "Инженер по тестированию",
+    "Тестировщик ПО",
+  ]) {
+    assert.equal(applySearchFilters(request, {
+      ...job,
+      title,
+      description: "Build and maintain product features",
+      tags: [],
+    }), true, title);
+  }
+
+  for (const title of ["Senior Frontend Engineer", "Staff Frontend Engineer"]) {
+    assert.equal(applySearchFilters(request, {
+      ...job,
+      title,
+      description: "Build and maintain product features",
+      tags: [],
+    }), false, title);
+  }
+});
+
 test("query terms use token boundaries instead of substring matches", () => {
   assert.equal(applySearchFilters({ ...baseRequest, query: "QA" }, { ...job, title: "QA Engineer" }), true);
   assert.equal(matchesQuery("QA", "Iraq Support Specialist"), false);
