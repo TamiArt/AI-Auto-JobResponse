@@ -37,8 +37,8 @@ function containsQueryPhrase(haystack, phrase) {
   return (" " + normalizedHaystack + " ").includes(" " + normalizedPhrase + " ");
 }
 
-const QA_ROLE_QUERY = /(?:^|\\s)(?:qa|quality assurance|тестировщик|тестировщица|тестирование|тестирования|testing|software tester|test engineer|test automation|автоматизац тестирован|инженер по тестирован)(?:$|\\s)/;
-const QA_ROLE_TITLE = /(?:^|\\s)(?:qa|quality assurance|tester|testing|test engineer|software tester|test automation|software development engineer in test|sdet|тестировщик|тестировщиц|тестирован|автоматизац тестирован)(?:$|\\s)/;
+const QA_ROLE_QUERY = /(?:^|\\s)(?:qa|quality assurance|тестиров\\p{L}*|тестирован\\p{L}*|testing|software tester|test engineer|test automation|автоматизац\\p{L}*\\s+тестирован\\p{L}*|инженер по тестирован\\p{L}*)(?:$|\\s)/u;
+const QA_ROLE_TITLE = /(?:^|\\s)(?:qa|quality assurance|tester|testing|test engineer|software tester|test automation|software development engineer in test|sdet|тестиров\\p{L}*|тестирован\\p{L}*|автоматизац\\p{L}*\\s+тестирован\\p{L}*)(?:$|\\s)/u;
 
 export function matchesQuery(query, ...values) {
   const normalizedQuery = normalizeQueryText(query);
