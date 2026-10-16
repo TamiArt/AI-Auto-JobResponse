@@ -106,6 +106,18 @@ test("saved searches remove by id and clear safely", () => {
   assert.deepEqual(loadSavedSearches(), []);
 });
 
+test("failed storage writes do not falsely persist a saved-search deletion", () => {
+  const storage = createStorage();
+  globalThis.localStorage = storage;
+  clearSavedSearches();
+  const saved = saveSearch({ name: "QA", request: request() }, new Date("2026-10-15T10:00:00.000Z"));
+  storage.setItem = () => { throw new Error("QuotaExceededError"); };
+
+  const optimistic = removeSavedSearch(saved[0].id);
+  assert.deepEqual(optimistic, []);
+  assert.equal(loadSavedSearches().some((item) => item.id === saved[0].id), true);
+});
+
 test("saved-search collection is bounded to prevent unbounded browser storage growth", () => {
   globalThis.localStorage = createStorage();
   clearSavedSearches();
