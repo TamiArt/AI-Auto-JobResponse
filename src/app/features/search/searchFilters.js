@@ -37,7 +37,7 @@ function containsQueryPhrase(haystack, phrase) {
   return (" " + normalizedHaystack + " ").includes(" " + normalizedPhrase + " ");
 }
 
-const QA_ROLE_QUERY = /(?:^|\s)(?:(?:qa|quality assurance)\s+(?:engineer|automation|test|tester)|software tester|test engineer|test automation|testing|тестиров\p{L}*|тестирован\p{L}*|автоматизац\p{L}*\s+тестирован\p{L}*|инженер по тестированию)(?:$|\s)/u;
+const QA_ROLE_QUERY = /(?:^|\s)(?:(?:qa|quality assurance)\s+(?:engineer|инженер\p{L}*|automation|test|tester)|software tester|test engineer|test automation|testing|тестиров\p{L}*|тестирован\p{L}*|автоматизац\p{L}*\s+тестирован\p{L}*|инженер по тестированию)(?:$|\s)/u;
 const QA_ROLE_TITLE = /(?:^|\s)(?:(?:senior|staff|lead|principal|junior|middle|mid(?:-level)?)\s+)*(?:qa\s+(?:(?:automation|test)\s+)?engineer|qa automation(?: engineer)?|quality assurance(?: engineer)?|software development engineer in test|sdet|test automation engineer|automation test engineer|test engineer|software tester|tester|инженер по тестированию|тестиров\p{L}*|тестирован\p{L}*|автоматизац\p{L}*\s+тестирован\p{L}*)(?:$|\s)/u;
 
 export function matchesQuery(query, ...values) {
