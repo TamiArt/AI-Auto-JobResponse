@@ -54,7 +54,7 @@ export function matchesQuery(query, ...values) {
   }
 
   const remainingTerms = QA_ROLE_QUERY.test(normalizedQuery)
-    ? terms.filter((term) => !/^(?:qa|quality|assurance|инженер|инженера|инженеры|engineer|тестиров\\p{L}*|тестирован\\p{L}*|testing|tester|test|automation|автоматизац\\p{L}*)$/u.test(term))
+    ? terms.filter((term) => !/^(?:qa|quality|assurance|инженер|инженера|инженеры|engineer|тестиров.*|тестирован.*|testing|tester|test|automation|автоматизац.*)$/u.test(term))
     : terms;
 
   return remainingTerms.every((term) => {
