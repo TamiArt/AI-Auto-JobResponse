@@ -117,3 +117,15 @@ test("saved-search collection is bounded to prevent unbounded browser storage gr
   assert.equal(saved.length, MAX_SAVED_SEARCHES);
   assert.equal(saved[0].name, `Search ${MAX_SAVED_SEARCHES + 2}`);
 });
+
+test("storage quota failures do not crash saving and are detectable on reload", () => {
+  globalThis.localStorage = {
+    getItem() { return null; },
+    setItem() { throw new Error("QuotaExceededError"); },
+    removeItem() {},
+  };
+
+  const optimistic = saveSearch({ name: "QA", request: request() }, new Date("2026-10-15T10:00:00.000Z"));
+  assert.equal(optimistic.length, 1);
+  assert.deepEqual(loadSavedSearches(), []);
+});
