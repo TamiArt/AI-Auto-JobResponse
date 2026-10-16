@@ -85,6 +85,35 @@ test("QA engineer searches still accept senior QA and test automation roles", ()
   }
 });
 
+test("QA role aliases are matched by title without requiring QA keywords in the description", () => {
+  const request = { ...baseRequest, query: "QA-инженер" };
+  for (const title of [
+    "Senior QA Engineer",
+    "QA Automation Engineer",
+    "Test Automation Engineer",
+    "Software Development Engineer in Test",
+    "Quality Assurance Engineer",
+    "Инженер по тестированию",
+    "Тестировщик ПО",
+  ]) {
+    assert.equal(applySearchFilters(request, {
+      ...job,
+      title,
+      description: "Build and maintain product features",
+      tags: [],
+    }), true, title);
+  }
+
+  for (const title of ["Senior Frontend Engineer", "Staff Frontend Engineer"]) {
+    assert.equal(applySearchFilters(request, {
+      ...job,
+      title,
+      description: "Build and maintain product features",
+      tags: [],
+    }), false, title);
+  }
+});
+
 test("query terms use token boundaries instead of substring matches", () => {
   assert.equal(applySearchFilters({ ...baseRequest, query: "QA" }, { ...job, title: "QA Engineer" }), true);
   assert.equal(matchesQuery("QA", "Iraq Support Specialist"), false);
