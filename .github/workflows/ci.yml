@@ -8,6 +8,7 @@ on:
       - fix/production-hardening
       - feature/jobos-application-studio
       - feature/jobos-application-audit
+      - feat/saved-searches-foundation
   pull_request:
     branches:
       - main

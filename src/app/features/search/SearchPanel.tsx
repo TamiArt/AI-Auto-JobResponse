@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { AnimatePresence, motion } from "motion/react";
-import { AlertCircle, Briefcase, Building2, Check, Clock, ExternalLink, Loader2, MapPin, RefreshCw, Star, Target, Trash2 } from "lucide-react";
+import { AlertCircle, Bookmark, Briefcase, Building2, Check, Clock, ExternalLink, Loader2, MapPin, Play, RefreshCw, Star, Target, Trash2 } from "lucide-react";
 import type { Config, EmploymentTypeFilter, ExperienceFilter, JobSource, PublishedWithinFilter, SalaryCurrency, SearchSort, WorkModeFilter } from "../../domain/types";
 import { AREA_OPTIONS, JOB_SOURCES } from "../../data/catalog";
 import { PROFESSION_EXAMPLES, PROFESSION_GROUPS } from "../../data/professions";
-import { mergeSearchResults, searchJobs, type RealJobSource, type SearchRequest, type SearchResult, type SearchResponse, type SourceRefreshMeta } from "./searchService";
+import { getSearchEmptyState, mergeSearchResults, searchJobs, type RealJobSource, type SearchRequest, type SearchResult, type SearchResponse, type SourceRefreshMeta } from "./searchService";
 import { addSearchHistory, clearSearchHistory, loadFavorites, loadSearchHistory, persistFavorites, type SearchHistoryEntry } from "./searchStorage";
+import { loadSavedSearches, removeSavedSearch, saveSearch, type SavedSearch } from "./savedSearchStorage";
 import { capabilityLabel, getSourceCapability } from "./sourceCapabilities";
 
 const USER_SOURCES: RealJobSource[] = ["hh", "arbeitnow", "remocate", "superjob"];
@@ -45,14 +46,14 @@ function SearchResultCard({ result, favorite, onToggleFavorite, onOpenApplicatio
 export function SearchPanel({ config, onOpenApplication }: { config: Config; onOpenApplication: (job: SearchResult) => void }) {
   const [query, setQuery] = useState(config.jobTitle || ""); const [workMode, setWorkMode] = useState<WorkModeFilter>(config.workMode || "any"); const [location, setLocation] = useState(config.location || ""); const [employmentType, setEmploymentType] = useState<EmploymentTypeFilter>(config.employmentType || "any"); const [salaryFrom, setSalaryFrom] = useState(config.salaryFrom || ""); const [salaryTo, setSalaryTo] = useState(config.salaryTo || ""); const [salaryCurrency, setSalaryCurrency] = useState<SalaryCurrency>(config.salaryCurrency || "RUB"); const [areaId, setAreaId] = useState(config.areaId || "1"); const [experience, setExperience] = useState<ExperienceFilter>(config.experience || "any"); const [publishedWithin, setPublishedWithin] = useState<PublishedWithinFilter>("any"); const [sortBy, setSortBy] = useState<SearchSort>("date");
   const [activeSources, setActiveSources] = useState<Set<RealJobSource>>(new Set(USER_SOURCES.filter((source) => source !== "superjob")) ); const [response, setResponse] = useState<SearchResponse>({ results: [], errors: {}, attemptedSources: [], nextPages: {} }); const [lastRequest, setLastRequest] = useState<SearchRequest | null>(null);
-  const [favorites, setFavorites] = useState<SearchResult[]>(loadFavorites); const [history, setHistory] = useState<SearchHistoryEntry[]>(loadSearchHistory); const [showFavorites, setShowFavorites] = useState(false); const [resultSourceFilter, setResultSourceFilter] = useState<"all" | RealJobSource>("all"); const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [searched, setSearched] = useState(false);
+  const [favorites, setFavorites] = useState<SearchResult[]>(loadFavorites); const [history, setHistory] = useState<SearchHistoryEntry[]>(loadSearchHistory); const [savedSearches, setSavedSearches] = useState<SavedSearch[]>(loadSavedSearches); const [savedSearchName, setSavedSearchName] = useState(""); const [savedSearchMessage, setSavedSearchMessage] = useState<{ text: string; success: boolean } | null>(null); const [showFavorites, setShowFavorites] = useState(false); const [resultSourceFilter, setResultSourceFilter] = useState<"all" | RealJobSource>("all"); const [loading, setLoading] = useState(false); const [loadingMore, setLoadingMore] = useState(false); const [searched, setSearched] = useState(false);
   const favoriteIds = new Set(favorites.map((item) => item.id));
   const toggleSource = (source: RealJobSource) => setActiveSources((current) => { const next = new Set(current); if (next.has(source)) { if (next.size > 1) next.delete(source); } else next.add(source); return next; });
   const toggleFavorite = (result: SearchResult) => setFavorites((current) => { const next = current.some((item) => item.id === result.id) ? current.filter((item) => item.id !== result.id) : [result, ...current]; persistFavorites(next); return next; });
 
-  const runSearch = async ({ searchQuery, searchAreaId, searchSalaryFrom, searchSalaryTo, searchSalaryCurrency, searchWorkMode, searchLocation, searchEmploymentType, searchExperience, searchPublishedWithin, searchSortBy, sources }: { searchQuery: string; searchAreaId: string; searchSalaryFrom: string; searchSalaryTo: string; searchSalaryCurrency: SalaryCurrency; searchWorkMode: WorkModeFilter; searchLocation: string; searchEmploymentType: EmploymentTypeFilter; searchExperience: ExperienceFilter; searchPublishedWithin: PublishedWithinFilter; searchSortBy: SearchSort; sources: RealJobSource[] }) => {
+  const runSearch = async ({ searchQuery, searchAreaId, searchSalaryFrom, searchSalaryTo, searchSalaryCurrency, searchWorkMode, searchLocation, searchEmploymentType, searchExperience, searchPublishedWithin, searchSortBy, sources, telegramChannels }: { searchQuery: string; searchAreaId: string; searchSalaryFrom: string; searchSalaryTo: string; searchSalaryCurrency: SalaryCurrency; searchWorkMode: WorkModeFilter; searchLocation: string; searchEmploymentType: EmploymentTypeFilter; searchExperience: ExperienceFilter; searchPublishedWithin: PublishedWithinFilter; searchSortBy: SearchSort; sources: RealJobSource[]; telegramChannels?: string[] }) => {
     const trimmedQuery = searchQuery.trim(); if (!trimmedQuery || loading || loadingMore) return;
-    const request: SearchRequest = { query: trimmedQuery, areaId: searchAreaId, salaryFrom: searchSalaryFrom, salaryTo: searchSalaryTo, salaryCurrency: searchSalaryCurrency, workMode: searchWorkMode, location: searchLocation, employmentType: searchEmploymentType, experience: searchExperience, publishedWithin: searchPublishedWithin, sortBy: searchSortBy, telegramChannels: config.telegramChannels, sources, page: 0 };
+    const request: SearchRequest = { query: trimmedQuery, areaId: searchAreaId, salaryFrom: searchSalaryFrom, salaryTo: searchSalaryTo, salaryCurrency: searchSalaryCurrency, workMode: searchWorkMode, location: searchLocation, employmentType: searchEmploymentType, experience: searchExperience, publishedWithin: searchPublishedWithin, sortBy: searchSortBy, telegramChannels: telegramChannels || config.telegramChannels, sources, page: 0 };
     setLoading(true); setSearched(false); setShowFavorites(false); setResultSourceFilter("all"); setResponse({ results: [], errors: {}, attemptedSources: [], nextPages: {} }); setLastRequest(request);
     try { const next = await searchJobs(request); setResponse(next); setHistory(addSearchHistory({ query: trimmedQuery, areaId: searchAreaId, salaryFrom: searchSalaryFrom, salaryTo: searchSalaryTo, salaryCurrency: searchSalaryCurrency, workMode: searchWorkMode, location: searchLocation, employmentType: searchEmploymentType, experience: searchExperience, sources })); } finally { setLoading(false); setSearched(true); }
   };
@@ -60,7 +61,69 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
   const loadMore = async () => { const paginatedSources = Object.entries(response.nextPages).filter(([, page]) => Number.isInteger(page)).map(([source]) => source as RealJobSource); if (!lastRequest || paginatedSources.length === 0 || loading || loadingMore) return; const pages = Object.fromEntries(paginatedSources.map((source) => [source, response.nextPages[source]])); setLoadingMore(true); try { const next = await searchJobs({ ...lastRequest, sources: paginatedSources, pages, page: 0 }); setResponse((current) => ({ results: mergeSearchResults(current.results, next.results), errors: { ...current.errors, ...next.errors }, attemptedSources: Array.from(new Set([...current.attemptedSources, ...next.attemptedSources])), nextPages: next.nextPages, refresh: { ...current.refresh, ...next.refresh } })); } finally { setLoadingMore(false); } };
   const repeatSearch = (entry: SearchHistoryEntry) => { setQuery(entry.query); setAreaId(entry.areaId); setSalaryFrom(entry.salaryFrom); setSalaryTo(entry.salaryTo || ""); setSalaryCurrency(entry.salaryCurrency || "RUB"); setWorkMode(entry.workMode || "any"); setLocation(entry.location || ""); setEmploymentType(entry.employmentType || "any"); setExperience(entry.experience || "any"); setActiveSources(new Set(entry.sources)); void runSearch({ searchQuery: entry.query, searchAreaId: entry.areaId, searchSalaryFrom: entry.salaryFrom, searchSalaryTo: entry.salaryTo || "", searchSalaryCurrency: entry.salaryCurrency || "RUB", searchWorkMode: entry.workMode || "any", searchLocation: entry.location || "", searchEmploymentType: entry.employmentType || "any", searchExperience: entry.experience || "any", searchPublishedWithin: "any", searchSortBy: "date", sources: entry.sources }); };
   const clearHistory = () => { clearSearchHistory(); setHistory([]); };
-  const failedSources = Object.entries(response.errors); const allAttemptedSourcesFailed = Boolean(lastRequest) && response.attemptedSources.length > 0 && response.attemptedSources.every((source) => Boolean(response.errors[source])); const resultSources = Array.from(new Set(response.results.map((result) => result.source))); const visibleResults = showFavorites ? favorites : resultSourceFilter === "all" ? response.results : response.results.filter((result) => result.source === resultSourceFilter);
+  const handleSaveSearch = () => {
+    if (!query.trim() || !savedSearchName.trim() || activeSources.size === 0) return;
+    const request: SearchRequest = {
+      query: query.trim(), areaId, salaryFrom, salaryTo, salaryCurrency, workMode, location,
+      employmentType, experience, publishedWithin, sortBy, telegramChannels: config.telegramChannels,
+      sources: Array.from(activeSources), page: 0,
+    };
+    const next = saveSearch({ name: savedSearchName, request });
+    setSavedSearches(next);
+    const expected = next[0];
+    const persisted = expected && loadSavedSearches().some((entry) => entry.id === expected.id && entry.updatedAt === expected.updatedAt);
+    if (!persisted) {
+      setSavedSearches(loadSavedSearches());
+      setSavedSearchMessage({ text: "Не удалось сохранить поиск в браузере. Проверьте настройки хранилища или освободите место.", success: false });
+      return;
+    }
+    setSavedSearchName("");
+    setSavedSearchMessage({ text: "Поиск сохранён в этом браузере.", success: true });
+  };
+  const applySavedSearch = (entry: SavedSearch) => {
+    const request = entry.request;
+    const sources = request.sources.filter((source): source is RealJobSource => source !== "ats");
+    if (!sources.length) return;
+    setQuery(request.query);
+    setAreaId(request.areaId);
+    setSalaryFrom(request.salaryFrom);
+    setSalaryTo(request.salaryTo || "");
+    setSalaryCurrency(request.salaryCurrency || "RUB");
+    setWorkMode(request.workMode || "any");
+    setLocation(request.location || "");
+    setEmploymentType(request.employmentType || "any");
+    setExperience(request.experience || "any");
+    setPublishedWithin(request.publishedWithin || "any");
+    setSortBy(request.sortBy || "date");
+    setActiveSources(new Set(sources));
+    void runSearch({
+      searchQuery: request.query,
+      searchAreaId: request.areaId,
+      searchSalaryFrom: request.salaryFrom,
+      searchSalaryTo: request.salaryTo || "",
+      searchSalaryCurrency: request.salaryCurrency || "RUB",
+      searchWorkMode: request.workMode || "any",
+      searchLocation: request.location || "",
+      searchEmploymentType: request.employmentType || "any",
+      searchExperience: request.experience || "any",
+      searchPublishedWithin: request.publishedWithin || "any",
+      searchSortBy: request.sortBy || "date",
+      sources,
+      telegramChannels: request.telegramChannels,
+    });
+  };
+  const handleRemoveSavedSearch = (id: string) => {
+    const next = removeSavedSearch(id);
+    const remaining = loadSavedSearches();
+    if (remaining.some((entry) => entry.id === id)) {
+      setSavedSearches(remaining);
+      setSavedSearchMessage({ text: "Не удалось удалить сохранённый поиск. Хранилище браузера недоступно.", success: false });
+      return;
+    }
+    setSavedSearches(next);
+    setSavedSearchMessage({ text: "Сохранённый поиск удалён.", success: true });
+  };
+  const failedSources = Object.entries(response.errors); const emptySearchState = getSearchEmptyState(response); const resultSources = Array.from(new Set(response.results.map((result) => result.source))); const visibleResults = showFavorites ? favorites : resultSourceFilter === "all" ? response.results : response.results.filter((result) => result.source === resultSourceFilter);
   const limitedRefresh = LIMITED_REFRESH_SOURCES.map((source) => [source, response.refresh?.[source]] as const).filter((entry): entry is readonly [RealJobSource, SourceRefreshMeta] => Boolean(entry[1]));
 
   return <div className="space-y-6">
@@ -84,14 +147,35 @@ export function SearchPanel({ config, onOpenApplication }: { config: Config; onO
       <div className="space-y-1.5"><span className="text-[10px] font-mono uppercase text-muted-foreground">Основные источники</span><div className="flex gap-2 flex-wrap">{USER_SOURCES.map((source) => { const meta = JOB_SOURCES[source]; const selected = activeSources.has(source); return <button key={source} type="button" onClick={() => toggleSource(source)} className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-mono border ${selected ? `${meta.color} ${meta.bg} ${meta.border}` : "text-muted-foreground border-border"}`}>{selected && <Check size={11} />}{meta.label}</button>; })}</div><p className="text-[10px] font-mono text-muted-foreground">Feeds, ATS и {config.telegramChannels.length ? `${config.telegramChannels.length} Telegram-канал(а/ов)` : "Telegram после добавления каналов в настройках"} подключаются автоматически.</p></div></div>
     </section>
 
-    {(history.length > 0 || favorites.length > 0) && <section className="rounded-[1.25rem] border border-border bg-card p-4 sm:p-5 space-y-3 shadow-[var(--shadow-soft)]"><div className="flex items-center justify-between gap-3 flex-wrap"><div className="flex gap-2"><button type="button" onClick={() => setShowFavorites(false)} className={`px-3 py-1.5 rounded-lg border text-xs font-mono ${!showFavorites ? "text-[var(--neon-violet)]" : "text-muted-foreground"}`}>Последние запросы</button><button type="button" onClick={() => setShowFavorites(true)} className={`px-3 py-1.5 rounded-lg border text-xs font-mono ${showFavorites ? "text-amber-400" : "text-muted-foreground"}`}><Star size={11} className="inline mr-1" />Избранное · {favorites.length}</button></div>{!showFavorites && history.length > 0 && <button type="button" onClick={clearHistory} className="text-xs font-mono text-muted-foreground hover:text-red-400"><Trash2 size={11} className="inline mr-1" />Очистить историю</button>}</div>{!showFavorites && <div className="flex flex-wrap gap-2">{history.map((entry) => <button key={entry.id} type="button" onClick={() => repeatSearch(entry)} className="px-3 py-2 rounded-lg border border-border text-xs font-mono"><span>{entry.query}</span><span className="text-muted-foreground"> · {AREA_OPTIONS.find((area) => area.id === entry.areaId)?.name || "Регион"}</span></button>)}</div>}</section>}
+    {(history.length > 0 || favorites.length > 0 || savedSearches.length > 0 || query.trim()) && <section className="rounded-[1.25rem] border border-border bg-card p-4 sm:p-5 space-y-3 shadow-[var(--shadow-soft)]">
+      <div className="flex items-center justify-between gap-3 flex-wrap">
+        <div className="flex gap-2 flex-wrap">
+          <button type="button" onClick={() => setShowFavorites(false)} className={`px-3 py-1.5 rounded-lg border text-xs font-mono ${!showFavorites ? "text-[var(--neon-violet)]" : "text-muted-foreground"}`}>Последние запросы</button>
+          <button type="button" onClick={() => setShowFavorites(true)} className={`px-3 py-1.5 rounded-lg border text-xs font-mono ${showFavorites ? "text-amber-400" : "text-muted-foreground"}`}><Star size={11} className="inline mr-1" />Избранное · {favorites.length}</button>
+        </div>
+        {!showFavorites && history.length > 0 && <button type="button" onClick={clearHistory} className="text-xs font-mono text-muted-foreground hover:text-red-400"><Trash2 size={11} className="inline mr-1" />Очистить историю</button>}
+      </div>
+      {!showFavorites && query.trim() && <div className="flex flex-col sm:flex-row gap-2">
+        <input value={savedSearchName} onChange={(event) => setSavedSearchName(event.target.value)} maxLength={80} placeholder="Название сохранённого поиска" aria-label="Название сохранённого поиска" className="flex-1 px-3 py-2 rounded-lg border border-border bg-input-background text-xs font-mono" />
+        <button type="button" onClick={handleSaveSearch} disabled={!savedSearchName.trim()} className="inline-flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg border border-[var(--neon-violet)]/40 text-xs font-mono text-[var(--neon-violet)] disabled:opacity-40"><Bookmark size={12} />Сохранить фильтры</button>
+      </div>}
+      {savedSearchMessage && <p role="status" aria-live="polite" className={`text-xs font-mono ${savedSearchMessage.success ? "text-emerald-600" : "text-red-600"}`}>{savedSearchMessage.text}</p>}
+      {!showFavorites && savedSearches.length > 0 && <div className="space-y-2"><div className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">Сохранённые поиски · {savedSearches.length}</div>
+        {savedSearches.map((entry) => <div key={entry.id} className="flex items-center gap-2 rounded-lg border border-border px-3 py-2">
+          <div className="min-w-0 flex-1"><div className="text-xs font-medium truncate">{entry.name}</div><div className="text-[10px] font-mono text-muted-foreground truncate">{entry.request.query} · {AREA_OPTIONS.find((area) => area.id === entry.request.areaId)?.name || "Регион"} · {entry.request.sources.length} источн.</div></div>
+          <button type="button" onClick={() => applySavedSearch(entry)} disabled={loading || loadingMore} className="inline-flex items-center gap-1 px-2.5 py-2 rounded-lg border border-border text-xs font-mono disabled:opacity-40" aria-label={`Запустить сохранённый поиск: ${entry.name}`}><Play size={11} />Применить</button>
+          <button type="button" onClick={() => handleRemoveSavedSearch(entry.id)} className="p-2 rounded-lg border border-border text-muted-foreground hover:text-red-400" aria-label={`Удалить сохранённый поиск: ${entry.name}`}><Trash2 size={12} /></button>
+        </div>)}
+      </div>}
+      {!showFavorites && <div className="flex flex-wrap gap-2">{history.map((entry) => <button key={entry.id} type="button" onClick={() => repeatSearch(entry)} className="px-3 py-2 rounded-lg border border-border text-xs font-mono"><span>{entry.query}</span><span className="text-muted-foreground"> · {AREA_OPTIONS.find((area) => area.id === entry.areaId)?.name || "Регион"}</span></button>)}</div>}
+    </section>}
 
     <AnimatePresence mode="wait">{loading && <motion.div key="loading" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="py-12 text-center"><Loader2 size={28} className="animate-spin text-[var(--neon-violet)] mx-auto mb-3" /><p className="text-sm font-mono text-muted-foreground">Получаю вакансии из нескольких независимых источников…</p></motion.div>}
     {!loading && showFavorites && <motion.div key="favorites" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="text-sm font-mono text-muted-foreground mb-3">Избранных вакансий: <span className="text-foreground font-semibold">{favorites.length}</span></div>{favorites.length === 0 ? <div className="rounded-xl border border-border bg-card py-10 text-center text-sm font-mono text-muted-foreground">Добавляйте вакансии звездой — они сохраняются в этом браузере.</div> : <div className="space-y-2">{favorites.map((result) => <SearchResultCard key={result.id} result={result} favorite onToggleFavorite={() => toggleFavorite(result)} onOpenApplication={onOpenApplication} />)}</div>}</motion.div>}
     {searched && !loading && !showFavorites && <motion.div key="results" initial={{ opacity: 0 }} animate={{ opacity: 1 }}><div className="flex items-center justify-between gap-3 mb-3"><div className="text-sm font-mono text-muted-foreground">Найдено <span className="font-semibold text-foreground">{visibleResults.length}</span> вакансий</div><button onClick={() => void handleSearch()} disabled={loadingMore} className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-border text-xs font-mono text-muted-foreground"><RefreshCw size={11} />Обновить поиск</button></div>{resultSources.length > 1 && <div className="mb-3 flex flex-wrap items-center gap-1.5"><span className="text-[10px] font-mono uppercase text-muted-foreground mr-1">Источник</span><button type="button" onClick={() => setResultSourceFilter("all")} className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-mono ${resultSourceFilter === "all" ? "border-[var(--neon-violet)]/40 text-[var(--neon-violet)] bg-[var(--neon-violet)]/8" : "border-border text-muted-foreground"}`}>Все · {response.results.length}</button>{resultSources.map((source) => { const count = response.results.filter((result) => result.source === source).length; return <button key={source} type="button" onClick={() => setResultSourceFilter(source)} className={`px-2.5 py-1.5 rounded-lg border text-[11px] font-mono ${resultSourceFilter === source ? "border-[var(--neon-violet)]/40 text-[var(--neon-violet)] bg-[var(--neon-violet)]/8" : "border-border text-muted-foreground"}`}>{sourceLabel(source)} · {count}</button>; })}</div>}
       {limitedRefresh.length > 0 && <div className="grid grid-cols-1 md:grid-cols-2 gap-2 mb-3">{limitedRefresh.map(([source, meta]) => <RefreshStatus key={source} source={source} meta={meta} />)}</div>}
       {response.attemptedSources.length > 0 && <div className="mb-3 rounded-lg border border-border bg-card px-3 py-2 text-[10px] font-mono text-muted-foreground"><div className="mb-1 text-foreground">Источники и возможности</div><div className="flex flex-wrap gap-1.5">{response.attemptedSources.map((source) => { const capability = getSourceCapability(source); return <span key={source} className="rounded-md bg-muted px-2 py-1">{sourceLabel(source)} · {capability ? capabilityLabel(capability) : "неизвестный режим"}</span>; })}</div></div>}{failedSources.length > 0 && <div className="space-y-2 mb-3">{failedSources.map(([source, message]) => <div key={source} className="flex items-start gap-2 rounded-lg border border-amber-400/25 bg-amber-400/8 px-3 py-2 text-xs font-mono text-amber-700"><AlertCircle size={12} className="mt-0.5" /><span>{sourceLabel(source)}: {message}. Результаты других источников сохранены.{source === "hh" && <> <a href="https://hh.ru/search/vacancy" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline underline-offset-2">Открыть официальный поиск HH <ExternalLink size={11} /></a></>}</span></div>)}</div>}
-      {allAttemptedSourcesFailed && visibleResults.length === 0 ? <div className="rounded-xl border border-red-400/25 bg-red-400/5 py-10 px-4 text-center text-sm font-mono text-red-700">Не удалось получить вакансии из доступных источников.</div> : visibleResults.length === 0 ? <div className="rounded-xl border border-border bg-card py-12 px-4 text-center text-sm font-mono text-muted-foreground">По этому запросу ничего не найдено. Попробуйте изменить профессию, формат работы, занятость, зарплату или локацию.</div> : <div className="space-y-2">{visibleResults.map((result) => <SearchResultCard key={result.id} result={result} favorite={favoriteIds.has(result.id)} onToggleFavorite={() => toggleFavorite(result)} onOpenApplication={onOpenApplication} />)}</div>}
+      {emptySearchState === "backend-unavailable" ? <div role="alert" className="rounded-xl border border-amber-400/25 bg-amber-400/5 py-10 px-4 text-center text-sm font-mono text-amber-700">Сервис поиска сейчас недоступен. Проверьте подключение и попробуйте обновить поиск.</div> : emptySearchState === "all-sources-failed" ? <div role="alert" className="rounded-xl border border-red-400/25 bg-red-400/5 py-10 px-4 text-center text-sm font-mono text-red-700">Не удалось получить вакансии из доступных источников.</div> : visibleResults.length === 0 ? <div className="rounded-xl border border-border bg-card py-12 px-4 text-center text-sm font-mono text-muted-foreground">По этому запросу ничего не найдено. Попробуйте изменить профессию, формат работы, занятость, зарплату или локацию.</div> : <div className="space-y-2">{visibleResults.map((result) => <SearchResultCard key={result.id} result={result} favorite={favoriteIds.has(result.id)} onToggleFavorite={() => toggleFavorite(result)} onOpenApplication={onOpenApplication} />)}</div>}
       {Object.keys(response.nextPages).length > 0 && visibleResults.length > 0 && lastRequest && <div className="pt-4 flex justify-center"><button type="button" onClick={() => void loadMore()} disabled={loadingMore} className="inline-flex items-center gap-2 px-5 py-2.5 rounded-xl border border-[var(--neon-violet)]/35 text-sm font-mono text-[var(--neon-violet)]">{loadingMore && <Loader2 size={13} className="animate-spin" />}{loadingMore ? "Загружаю…" : `Загрузить ещё (${Object.keys(response.nextPages).join(", ")})`}</button></div>}
     </motion.div>}</AnimatePresence>
 

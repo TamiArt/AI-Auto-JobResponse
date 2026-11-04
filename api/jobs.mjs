@@ -1,5 +1,5 @@
 import { handleSource, sendJson } from "./_shared.mjs";
-import { filterTelegramResults, normalizeTelegramHtml, validateTelegramRequest } from "../server/telegramPublic.mjs";
+import { normalizeTelegramHtml, validateTelegramRequest } from "../server/telegramPublic.mjs";
 import { withSecurityHeaders } from "../server/httpPolicy.mjs";
 import { renderTrudvsemVacancyPage, validateTrudvsemViewRequest } from "../server/trudvsemView.mjs";
 
@@ -25,14 +25,17 @@ async function handleTelegram(request, response) {
   const url = new URL(request.url || "/", `https://${request.headers?.host || "localhost"}`);
   const validation = validateTelegramRequest(url.searchParams);
   if (!validation.ok) return sendJson(response, validation.status, { error: validation.error });
-  const query = url.searchParams.get("q") || "";
   const settled = await Promise.allSettled(validation.channels.map(fetchTelegramChannel));
   const results = settled.flatMap((entry) => entry.status === "fulfilled" ? entry.value : []);
   const failedChannels = validation.channels.filter((_, index) => settled[index].status === "rejected");
-  return sendJson(response, 200, {
-    results: filterTelegramResults(results, query),
-    meta: { channels: validation.channels, failedChannels, lastUpdated: Date.now() },
-  }, 300);
+  const meta = { channels: validation.channels, failedChannels, lastUpdated: Date.now() };
+
+  // Never cache an outage as an empty snapshot. The client requests channels
+  // individually, so each successful response has its own query-independent CDN key.
+  if (failedChannels.length === validation.channels.length) {
+    return sendJson(response, 502, { error: "telegram_channels_unavailable", meta });
+  }
+  return sendJson(response, 200, { results, meta }, failedChannels.length ? 0 : 300);
 }
 
 function sendHtml(response, status, contentType, body) {
